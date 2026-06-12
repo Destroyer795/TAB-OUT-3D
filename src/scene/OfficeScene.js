@@ -97,23 +97,21 @@ export class OfficeScene {
         const fixtureMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 }); // Lighter light-fixture casing
         const glowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-        // A grid of long light fixtures running along the Z axis
-        const lightPositions = [
-            [-5.0, -14.0], [-5.0, -6.0], [-5.0, 2.0],
-            [ 5.0, -14.0], [ 5.0, -6.0], [ 5.0, 2.0],
-            [ 0.0, -10.0], [ 0.0, -2.0]
-        ];
+        // A mathematically perfect grid of 3x3 fixtures
+        // X coordinates: -6.0, 0.0, 6.0 (spaced exactly 6 units apart)
+        // Z coordinates: -15.0, -7.0, 1.0 (spaced exactly 8 units apart)
+        for (let x = -6.0; x <= 6.0; x += 6.0) {
+            for (let z = -15.0; z <= 1.0; z += 8.0) {
+                // Casing
+                const casing = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 3.2), fixtureMat);
+                casing.position.set(x, 5.96, z);
+                this.group.add(casing);
 
-        for (const [lx, lz] of lightPositions) {
-            // Casing
-            const casing = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 3.2), fixtureMat);
-            casing.position.set(lx, 5.96, lz);
-            this.group.add(casing);
-
-            // Glowing tube
-            const tube = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.07, 3.0), glowMat);
-            tube.position.set(lx, 5.92, lz);
-            this.group.add(tube);
+                // Glowing tube
+                const tube = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.07, 3.0), glowMat);
+                tube.position.set(x, 5.92, z);
+                this.group.add(tube);
+            }
         }
     }
 
@@ -477,6 +475,109 @@ export class OfficeScene {
         // Potted plants in empty spots
         this._createPlant(-6.5, 0, -10.0);
         this._createPlant(6.5, 0, -10.0);
+
+        // Agile Scrum whiteboard board on the right wall
+        this._createAgileBoard();
+    }
+
+    _createAgileBoard() {
+        const boardX = 11.9; // Mounted right inside the right wall (x = 12)
+        const boardY = 2.8;
+        const boardZ = -3.0;
+
+        // Board Frame (polished light aluminum trim)
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0xd1d7dd, metalness: 0.8, roughness: 0.2 });
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.2, 3.6), frameMat);
+        frame.position.set(boardX, boardY, boardZ);
+        this.group.add(frame);
+
+        // Whiteboard sheet
+        const sheetMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const sheet = new THREE.Mesh(new THREE.BoxGeometry(0.02, 2.0, 3.4), sheetMat);
+        sheet.position.set(boardX - 0.012, boardY, boardZ);
+        this.group.add(sheet);
+
+        // Title at the top: "SCRUM BOARD" (represented by dark marker dashes)
+        const titleMat = new THREE.MeshBasicMaterial({ color: 0x0f172a }); // Black marker
+        const titleLine1 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.04, 0.4), titleMat);
+        titleLine1.position.set(boardX - 0.025, boardY + 0.8, boardZ - 0.3);
+        this.group.add(titleLine1);
+        
+        const titleLine2 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.04, 0.3), titleMat);
+        titleLine2.position.set(boardX - 0.025, boardY + 0.8, boardZ + 0.2);
+        this.group.add(titleLine2);
+
+        // Scrum columns dividers (2 vertical grid lines)
+        const gridMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8 });
+        const col1 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 1.3, 0.02), gridMat);
+        col1.position.set(boardX - 0.025, boardY - 0.1, boardZ - 0.55);
+        this.group.add(col1);
+
+        const col2 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 1.3, 0.02), gridMat);
+        col2.position.set(boardX - 0.025, boardY - 0.1, boardZ + 0.55);
+        this.group.add(col2);
+
+        // Column Labels (represented by small hand-drawn looking colored marker dashes)
+        const labelMat = new THREE.MeshBasicMaterial({ color: 0x2563eb }); // Blue marker
+        // "To Do" label
+        const todoLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.035, 0.25), labelMat);
+        todoLbl.position.set(boardX - 0.025, boardY + 0.62, boardZ - 1.1);
+        this.group.add(todoLbl);
+
+        // "In Progress" label
+        const inProgLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.035, 0.35), labelMat);
+        inProgLbl.position.set(boardX - 0.025, boardY + 0.62, boardZ);
+        this.group.add(inProgLbl);
+
+        // "Done" label
+        const doneLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.035, 0.2), labelMat);
+        doneLbl.position.set(boardX - 0.025, boardY + 0.62, boardZ + 1.1);
+        this.group.add(doneLbl);
+
+        // Sticky notes (representing agile backlog tasks in To Do, In Progress, Done)
+        const notes = [
+            // To Do column
+            { z: -1.2, y: 0.3, color: 0xfef08a }, // Yellow
+            { z: -0.95, y: 0.05, color: 0xfecdd3 }, // Pink
+            { z: -1.2, y: -0.25, color: 0xbae6fd }, // Blue
+
+            // In Progress column
+            { z: -0.15, y: 0.25, color: 0xbbf7d0 }, // Green
+            { z: 0.15, y: 0.0, color: 0xfef08a }, // Yellow
+
+            // Done column
+            { z: 0.95, y: 0.35, color: 0xbae6fd }, // Blue
+            { z: 1.15, y: 0.1, color: 0xbbf7d0 }, // Green
+            { z: 0.9, y: -0.2, color: 0xfecdd3 } // Pink
+        ];
+
+        notes.forEach(note => {
+            const noteMat = new THREE.MeshStandardMaterial({
+                color: note.color,
+                roughness: 0.6
+            });
+            const noteMesh = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.18, 0.22), noteMat);
+            // Angle the note slightly to look realistically hand-placed (not perfectly straight)
+            noteMesh.rotation.x = (Math.random() - 0.5) * 0.18;
+            noteMesh.position.set(boardX - 0.025, boardY + note.y, boardZ + note.z);
+            this.group.add(noteMesh);
+        });
+
+        // Hand-drawn notes/manifesto on the lower whiteboard section
+        const redMarker = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+        const manifestoTitle = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.025, 0.3), redMarker);
+        manifestoTitle.position.set(boardX - 0.025, boardY - 0.5, boardZ - 1.0);
+        this.group.add(manifestoTitle);
+
+        // Hand-written text bullet points (simple dark scribbled lines)
+        for (let i = 0; i < 3; i++) {
+            const scribbleLine = new THREE.Mesh(
+                new THREE.BoxGeometry(0.005, 0.012, 0.45 + Math.random() * 0.15),
+                new THREE.MeshBasicMaterial({ color: 0x1e293b })
+            );
+            scribbleLine.position.set(boardX - 0.025, boardY - 0.64 - i * 0.1, boardZ - 0.9);
+            this.group.add(scribbleLine);
+        }
     }
 
     /* ── Small Office Props ────────────────────────────── */
