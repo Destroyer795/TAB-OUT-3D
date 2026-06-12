@@ -455,19 +455,58 @@ export class OfficeScene {
         // ── Background Office Workstations (Cubicle Farm) ────
         // Row 1 (just behind the walkway, z = -7.5)
         this._createBackgroundCubicle(-3.2, -7.5, 0);
+        this._createEmployee(-3.2, 0.27, -7.27, Math.PI, {
+            shirtColor: 0x93c5fd, // Light blue shirt
+            pantsColor: 0x1e293b,
+            hairColor: 0x111827, // Black hair
+            skinColor: 0xfdba74,
+            type: "sitting_desk"
+        });
+
         this._createBackgroundCubicle(0.0, -7.5, 0); // Directly visible in the central opening
+        this._createEmployee(0.0, 0.27, -7.27, Math.PI, {
+            shirtColor: 0xffffff, // White shirt
+            pantsColor: 0x334155,
+            hairColor: 0x7c2d12, // Brown hair
+            skinColor: 0xfcd34d,
+            type: "sitting_desk"
+        });
+
         this._createBackgroundCubicle(3.2, -7.5, 0);
 
         // Row 2 (z = -12.0)
         this._createBackgroundCubicle(-4.8, -12.0, 0);
         this._createBackgroundCubicle(-1.6, -12.0, 0);
+        this._createEmployee(-1.6, 0.27, -11.77, Math.PI, {
+            shirtColor: 0xfca5a5, // Light pink shirt
+            pantsColor: 0x0f172a,
+            hairColor: 0xd97706, // Blonde hair
+            skinColor: 0xfca5a5,
+            type: "sitting_desk"
+        });
+
         this._createBackgroundCubicle(1.6, -12.0, 0);
+        this._createEmployee(1.6, 0.27, -11.77, Math.PI, {
+            shirtColor: 0xdbe1e8, // Light gray shirt
+            pantsColor: 0x334155,
+            hairColor: 0x111827, // Black hair
+            skinColor: 0xfdba74,
+            type: "sitting_desk"
+        });
+
         this._createBackgroundCubicle(4.8, -12.0, 0);
 
         // Row 3 (z = -16.5)
         this._createBackgroundCubicle(-3.2, -16.5, 0);
         this._createBackgroundCubicle(0.0, -16.5, 0);
         this._createBackgroundCubicle(3.2, -16.5, 0);
+        this._createEmployee(3.2, 0.27, -16.27, Math.PI, {
+            shirtColor: 0x93c5fd, // Light blue shirt
+            pantsColor: 0x1e293b,
+            hairColor: 0x7c2d12, // Brown hair
+            skinColor: 0xfcd34d,
+            type: "sitting_desk"
+        });
 
         // ── Office Props & Details in Background ──────────────
         // File Cabinets against back wall
@@ -733,7 +772,7 @@ export class OfficeScene {
             [tableX + 0.9, tableZ + 0.6]
         ];
 
-        stoolPositions.forEach(([sx, sz]) => {
+        stoolPositions.forEach(([sx, sz], index) => {
             // Seat
             const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 12), stoolSeatMat);
             seat.position.set(sx, 0.65, sz);
@@ -749,6 +788,36 @@ export class OfficeScene {
             ring.rotation.x = Math.PI / 2;
             ring.position.set(sx, 0.2, sz);
             this.group.add(ring);
+
+            // Place sitting employees on 3 out of 4 stools
+            if (index === 0) {
+                // Stool at sx = tableX - 0.9, sz = tableZ - 0.6 (facing table center: +X)
+                this._createEmployee(sx, 0.47, sz, Math.PI / 2, {
+                    shirtColor: 0x93c5fd, // Light blue shirt
+                    pantsColor: 0x1e293b,
+                    hairColor: 0x7c2d12,
+                    skinColor: 0xfdba74,
+                    type: "sitting_stool"
+                });
+            } else if (index === 2) {
+                // Stool at sx = tableX + 0.9, sz = tableZ - 0.6 (facing table center: -X)
+                this._createEmployee(sx, 0.47, sz, -Math.PI / 2, {
+                    shirtColor: 0xfca5a5, // Light pink shirt
+                    pantsColor: 0x0f172a,
+                    hairColor: 0x111827,
+                    skinColor: 0xfcd34d,
+                    type: "sitting_stool"
+                });
+            } else if (index === 3) {
+                // Stool at sx = tableX + 0.9, sz = tableZ + 0.6 (facing table center: -X)
+                this._createEmployee(sx, 0.47, sz, -Math.PI / 2, {
+                    shirtColor: 0xdbe1e8, // Light gray shirt
+                    pantsColor: 0x334155,
+                    hairColor: 0xd97706,
+                    skinColor: 0xfca5a5,
+                    type: "sitting_stool"
+                });
+            }
         });
     }
 
@@ -1112,6 +1181,87 @@ export class OfficeScene {
             handle.position.set(x, drawerY + 0.12, z + 0.31);
             this.group.add(handle);
         }
+    }
+
+    _createEmployee(x, y, z, rotationY, config) {
+        const group = new THREE.Group();
+        group.position.set(x, y, z);
+        group.rotation.y = rotationY;
+
+        const skinMat = new THREE.MeshStandardMaterial({ color: config.skinColor || 0xfdba74, roughness: 0.6 });
+        const shirtMat = new THREE.MeshStandardMaterial({ color: config.shirtColor || 0xffffff, roughness: 0.7 });
+        const pantsMat = new THREE.MeshStandardMaterial({ color: config.pantsColor || 0x1e293b, roughness: 0.8 });
+        const hairMat = new THREE.MeshStandardMaterial({ color: config.hairColor || 0x111827, roughness: 0.9 });
+        const shoeMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+
+        // Torso
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.48, 0.22), shirtMat);
+        torso.position.set(0, 0.38, 0);
+        group.add(torso);
+
+        // Head
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), skinMat);
+        head.position.set(0, 0.70, 0);
+        group.add(head);
+
+        // Hair (styled modern boxy cut)
+        const hair = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), hairMat);
+        hair.position.set(0, 0.78, -0.01);
+        group.add(hair);
+
+        // Sitting legs: Thighs extending forward
+        const leftThigh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.32), pantsMat);
+        leftThigh.position.set(-0.09, 0.16, 0.12);
+        group.add(leftThigh);
+
+        const rightThigh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.32), pantsMat);
+        rightThigh.position.set(0.09, 0.16, 0.12);
+        group.add(rightThigh);
+
+        // Calves extending down
+        const leftCalf = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.32, 0.075), pantsMat);
+        leftCalf.position.set(-0.09, 0.0, 0.24);
+        group.add(leftCalf);
+
+        const rightCalf = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.32, 0.075), pantsMat);
+        rightCalf.position.set(0.09, 0.0, 0.24);
+        group.add(rightCalf);
+
+        // Shoes
+        const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), shoeMat);
+        leftShoe.position.set(-0.09, -0.17, 0.26);
+        group.add(leftShoe);
+
+        const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), shoeMat);
+        rightShoe.position.set(0.09, -0.17, 0.26);
+        group.add(rightShoe);
+
+        // Arms (typing posture or resting posture)
+        if (config.type === "sitting_desk") {
+            // Desk typing arms
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.32), shirtMat);
+            leftArm.position.set(-0.19, 0.36, 0.1);
+            leftArm.rotation.x = -0.3;
+            group.add(leftArm);
+
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.32), shirtMat);
+            rightArm.position.set(0.19, 0.36, 0.1);
+            rightArm.rotation.x = -0.3;
+            group.add(rightArm);
+        } else {
+            // Resting casual arms
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.3), shirtMat);
+            leftArm.position.set(-0.18, 0.32, 0.08);
+            leftArm.rotation.x = 0.3;
+            group.add(leftArm);
+
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.3), shirtMat);
+            rightArm.position.set(0.18, 0.32, 0.08);
+            rightArm.rotation.x = 0.3;
+            group.add(rightArm);
+        }
+
+        this.group.add(group);
     }
 
     dispose() {
