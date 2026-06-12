@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TAB-OUT 3D</title>
+    
+    <!-- Import Map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- HUD Overlay -->
+    <div id="hud"></div>
+
+    <!-- Main Menu -->
+    <div id="menu"></div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover"></div>
+
+    <!-- Application Entry Point -->
+    <script type="module" src="src/main.js"></script>
+
+</body>
+</html>
