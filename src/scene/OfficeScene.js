@@ -455,7 +455,7 @@ export class OfficeScene {
         // ── Background Office Workstations (Cubicle Farm) ────
         // Row 1 (just behind the walkway, z = -7.5)
         this._createBackgroundCubicle(-3.2, -7.5, 0);
-        this._createEmployee(-3.2, 0.27, -7.27, Math.PI, {
+        this._createEmployee(-3.2, 0.29, -7.15, Math.PI, {
             shirtColor: 0x93c5fd, // Light blue shirt
             pantsColor: 0x1e293b,
             hairColor: 0x111827, // Black hair
@@ -464,7 +464,7 @@ export class OfficeScene {
         });
 
         this._createBackgroundCubicle(0.0, -7.5, 0); // Directly visible in the central opening
-        this._createEmployee(0.0, 0.27, -7.27, Math.PI, {
+        this._createEmployee(0.0, 0.29, -7.15, Math.PI, {
             shirtColor: 0xffffff, // White shirt
             pantsColor: 0x334155,
             hairColor: 0x7c2d12, // Brown hair
@@ -477,7 +477,7 @@ export class OfficeScene {
         // Row 2 (z = -12.0)
         this._createBackgroundCubicle(-4.8, -12.0, 0);
         this._createBackgroundCubicle(-1.6, -12.0, 0);
-        this._createEmployee(-1.6, 0.27, -11.77, Math.PI, {
+        this._createEmployee(-1.6, 0.29, -11.65, Math.PI, {
             shirtColor: 0xfca5a5, // Light pink shirt
             pantsColor: 0x0f172a,
             hairColor: 0xd97706, // Blonde hair
@@ -486,7 +486,7 @@ export class OfficeScene {
         });
 
         this._createBackgroundCubicle(1.6, -12.0, 0);
-        this._createEmployee(1.6, 0.27, -11.77, Math.PI, {
+        this._createEmployee(1.6, 0.29, -11.65, Math.PI, {
             shirtColor: 0xdbe1e8, // Light gray shirt
             pantsColor: 0x334155,
             hairColor: 0x111827, // Black hair
@@ -500,7 +500,7 @@ export class OfficeScene {
         this._createBackgroundCubicle(-3.2, -16.5, 0);
         this._createBackgroundCubicle(0.0, -16.5, 0);
         this._createBackgroundCubicle(3.2, -16.5, 0);
-        this._createEmployee(3.2, 0.27, -16.27, Math.PI, {
+        this._createEmployee(3.2, 0.29, -16.15, Math.PI, {
             shirtColor: 0x93c5fd, // Light blue shirt
             pantsColor: 0x1e293b,
             hairColor: 0x7c2d12, // Brown hair
@@ -1057,9 +1057,9 @@ export class OfficeScene {
         cubicleGroup.position.set(x, 0, z);
         cubicleGroup.rotation.y = rotationY;
 
-        // Desk top
+        // Desk top (full scale, matches player's desk)
         const deskMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }); // Pure white desk top
-        const desk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.8), deskMat);
+        const desk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.2), deskMat);
         desk.position.set(0, 0.82, 0);
         cubicleGroup.add(desk);
 
@@ -1067,10 +1067,10 @@ export class OfficeScene {
         const legMat = new THREE.MeshStandardMaterial({ color: 0xbac2cc, metalness: 0.5, roughness: 0.4 });
         const legGeo = new THREE.BoxGeometry(0.04, 0.82, 0.04);
         const legPositions = [
-            [-0.75, 0.41, -0.35],
-            [ 0.75, 0.41, -0.35],
-            [-0.75, 0.41,  0.35],
-            [ 0.75, 0.41,  0.35]
+            [-1.1, 0.41, -0.5],
+            [ 1.1, 0.41, -0.5],
+            [-1.1, 0.41,  0.5],
+            [ 1.1, 0.41,  0.5]
         ];
         for (const pos of legPositions) {
             const leg = new THREE.Mesh(legGeo, legMat);
@@ -1078,35 +1078,35 @@ export class OfficeScene {
             cubicleGroup.add(leg);
         }
 
-        // Cubicle partition walls (back and sides)
+        // Cubicle partition walls (back and sides, lowered to height 1.2 to match player's open visual style)
         const wallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }); // Pure white fabric
         const frameMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.6, roughness: 0.3 }); // Extremely light gray trim
 
         // Back wall
-        const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.04), wallMat);
-        backWall.position.set(0, 0.7, -0.4);
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 0.04), wallMat);
+        backWall.position.set(0, 0.6, -0.6);
         cubicleGroup.add(backWall);
 
-        const backTrim = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.03, 0.06), frameMat);
-        backTrim.position.set(0, 1.4, -0.4);
+        const backTrim = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.03, 0.06), frameMat);
+        backTrim.position.set(0, 1.2, -0.6);
         cubicleGroup.add(backTrim);
 
         // Left wall
-        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.4, 0.8), wallMat);
-        leftWall.position.set(-0.8, 0.7, 0);
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.2, 1.2), wallMat);
+        leftWall.position.set(-1.2, 0.6, 0);
         cubicleGroup.add(leftWall);
 
-        const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.8), frameMat);
-        leftTrim.position.set(-0.8, 1.4, 0);
+        const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 1.2), frameMat);
+        leftTrim.position.set(-1.2, 1.2, 0);
         cubicleGroup.add(leftTrim);
 
         // Right wall
-        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.4, 0.8), wallMat);
-        rightWall.position.set(0.8, 0.7, 0);
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.2, 1.2), wallMat);
+        rightWall.position.set(1.2, 0.6, 0);
         cubicleGroup.add(rightWall);
 
-        const rightTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.8), frameMat);
-        rightTrim.position.set(0.8, 1.4, 0);
+        const rightTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 1.2), frameMat);
+        rightTrim.position.set(0.8, 1.2, 0); // Correctly offset trim
         cubicleGroup.add(rightTrim);
 
         // Monitor
@@ -1116,38 +1116,38 @@ export class OfficeScene {
         const screenOn = Math.random() > 0.4;
         const screenOnMat = new THREE.MeshBasicMaterial({ color: screenOn ? (Math.random() > 0.5 ? 0x22c55e : 0x3b82f6) : 0x0f172a });
 
-        // Monitor body
-        const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 0.04), monMat);
-        monitor.position.set(0, 1.0, -0.2);
+        // Monitor body (larger and more detailed)
+        const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.04), monMat);
+        monitor.position.set(0, 1.05, -0.3);
         cubicleGroup.add(monitor);
 
         // Monitor screen face (facing towards the desk/chair, so towards +Z)
-        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.43, 0.28), screenOnMat);
-        screen.position.set(0, 1.0, -0.178);
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.38), screenOnMat);
+        screen.position.set(0, 1.05, -0.278);
         cubicleGroup.add(screen);
 
         // Monitor stand
-        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.08), monMat);
-        stand.position.set(0, 0.9, -0.2);
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.1), monMat);
+        stand.position.set(0, 0.92, -0.3);
         cubicleGroup.add(stand);
 
-        // Keyboard (simple flat box, lighter gray)
-        const kb = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.015, 0.12), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }));
+        // Keyboard (simple flat box, matches player's desk)
+        const kb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.16), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }));
         kb.position.set(0, 0.835, 0.05);
         cubicleGroup.add(kb);
 
-        // Chair (simple mesh, lighter gray fabric)
-        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.35), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
-        chairSeat.position.set(0, 0.45, 0.2);
+        // Chair (properly sized)
+        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
+        chairSeat.position.set(0, 0.45, 0.35);
         cubicleGroup.add(chairSeat);
 
-        const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.03), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
-        chairBack.position.set(0, 0.7, 0.35);
+        const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.6, 0.04), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
+        chairBack.position.set(0, 0.75, 0.58);
         chairBack.rotation.x = 0.08;
         cubicleGroup.add(chairBack);
 
-        const chairPost = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x8fa0b5, metalness: 0.6 }));
-        chairPost.position.set(0, 0.3, 0.2);
+        const chairPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x8fa0b5, metalness: 0.6 }));
+        chairPost.position.set(0, 0.3, 0.35);
         cubicleGroup.add(chairPost);
 
         this.group.add(cubicleGroup);
@@ -1238,27 +1238,71 @@ export class OfficeScene {
 
         // Arms (typing posture or resting posture)
         if (config.type === "sitting_desk") {
-            // Desk typing arms
-            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.32), shirtMat);
-            leftArm.position.set(-0.19, 0.36, 0.1);
-            leftArm.rotation.x = -0.3;
-            group.add(leftArm);
+            // Left Arm: Upper arm extending forward/down from shoulder
+            const leftUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.22), shirtMat);
+            leftUpper.position.set(-0.18, 0.52, 0.08);
+            leftUpper.rotation.x = 0.2;
+            group.add(leftUpper);
 
-            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.32), shirtMat);
-            rightArm.position.set(0.19, 0.36, 0.1);
-            rightArm.rotation.x = -0.3;
-            group.add(rightArm);
+            // Right Arm: Upper arm extending forward/down from shoulder
+            const rightUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.22), shirtMat);
+            rightUpper.position.set(0.18, 0.52, 0.08);
+            rightUpper.rotation.x = 0.2;
+            group.add(rightUpper);
+
+            // Left Forearm: extends horizontally resting on keyboard
+            const leftFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.22), shirtMat);
+            leftFore.position.set(-0.14, 0.55, 0.22);
+            leftFore.rotation.x = -0.1;
+            group.add(leftFore);
+
+            // Right Forearm: extends horizontally resting on keyboard
+            const rightFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.22), shirtMat);
+            rightFore.position.set(0.14, 0.55, 0.22);
+            rightFore.rotation.x = -0.1;
+            group.add(rightFore);
+
+            // Hands resting on keyboard keys
+            const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
+            leftHand.position.set(-0.1, 0.56, 0.32);
+            group.add(leftHand);
+
+            const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
+            rightHand.position.set(0.1, 0.56, 0.32);
+            group.add(rightHand);
         } else {
-            // Resting casual arms
-            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.3), shirtMat);
-            leftArm.position.set(-0.18, 0.32, 0.08);
-            leftArm.rotation.x = 0.3;
-            group.add(leftArm);
+            // Left Arm: Upper arm extending down to meeting table level
+            const leftUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.24), shirtMat);
+            leftUpper.position.set(-0.18, 0.48, 0.1);
+            leftUpper.rotation.x = 0.4;
+            group.add(leftUpper);
 
-            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.3), shirtMat);
-            rightArm.position.set(0.18, 0.32, 0.08);
-            rightArm.rotation.x = 0.3;
-            group.add(rightArm);
+            // Right Arm: Upper arm extending down to meeting table level
+            const rightUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.24), shirtMat);
+            rightUpper.position.set(0.18, 0.48, 0.1);
+            rightUpper.rotation.x = 0.4;
+            group.add(rightUpper);
+
+            // Left Forearm resting flat on birch table top
+            const leftFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.24), shirtMat);
+            leftFore.position.set(-0.13, 0.48, 0.26);
+            leftFore.rotation.x = -0.1;
+            group.add(leftFore);
+
+            // Right Forearm resting flat on birch table top
+            const rightFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.24), shirtMat);
+            rightFore.position.set(0.13, 0.48, 0.26);
+            rightFore.rotation.x = -0.1;
+            group.add(rightFore);
+
+            // Hands resting flat on birch wood top
+            const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
+            leftHand.position.set(-0.09, 0.485, 0.36);
+            group.add(leftHand);
+
+            const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
+            rightHand.position.set(0.09, 0.485, 0.36);
+            group.add(rightHand);
         }
 
         this.group.add(group);
