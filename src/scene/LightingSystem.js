@@ -42,9 +42,9 @@ export class LightingSystem {
         this.scene.add(this.monitorGlow);
         this.lights.push(this.monitorGlow);
 
-        // Hallway light (behind cubicle)
-        this.hallwayLight = new THREE.PointLight(0xfff5e0, 0.35, 10);
-        this.hallwayLight.position.set(0, 4, -5);
+        // Hallway light (over the hallway walk path)
+        this.hallwayLight = new THREE.PointLight(0xfff5e0, 0.45, 10);
+        this.hallwayLight.position.set(0, 4, -4.0);
         this.scene.add(this.hallwayLight);
         this.lights.push(this.hallwayLight);
 
