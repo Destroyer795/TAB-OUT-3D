@@ -47,7 +47,7 @@ export class Game {
         this.scene.background = new THREE.Color(0xf1f5f9); // Extremely bright office daytime color
         this.scene.fog = new THREE.Fog(0xf1f5f9, 15, 38);
 
-        this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 50);
+        this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 150);
         this.camera.position.set(CAM_DEFAULT.x, CAM_DEFAULT.y, CAM_DEFAULT.z);
         this._camTarget = { ...CAM_DEFAULT };
         this._camLookY  = CAM_DEFAULT.lookY;

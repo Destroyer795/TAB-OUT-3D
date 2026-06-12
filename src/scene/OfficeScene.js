@@ -406,7 +406,8 @@ export class OfficeScene {
             color: 0xe2f1ff, // Crisp ice-tinted glass
             transparent: true,
             opacity: 0.08,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            fog: false
         });
         const glass = new THREE.Mesh(new THREE.BoxGeometry(0.01, 5.76, 30.0), glassMat);
         glass.position.set(-12.0, 3.0, -5.0);
@@ -550,7 +551,7 @@ export class OfficeScene {
         // ── 1. Sky Backdrop ──────────────────────────────────
         // A huge blue sky plane placed far to the left to span the full window view
         const skyGeo = new THREE.PlaneGeometry(120, 80);
-        const skyMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, fog: false });
         const sky = new THREE.Mesh(skyGeo, skyMat);
         sky.position.set(-48.0, 15.0, -5.0);
         sky.rotation.y = Math.PI / 2;
@@ -570,7 +571,7 @@ export class OfficeScene {
             towerGroup.position.set(s.x, s.h / 2 - 2, s.z);
 
             // Using MeshBasicMaterial ensures the buildings are brightly visible and unaffected by room lighting
-            const bodyMat = new THREE.MeshBasicMaterial({ color: s.color });
+            const bodyMat = new THREE.MeshBasicMaterial({ color: s.color, fog: false });
             const body = new THREE.Mesh(new THREE.BoxGeometry(s.w, s.h, s.d), bodyMat);
             towerGroup.add(body);
 
@@ -578,7 +579,8 @@ export class OfficeScene {
             const windowMat = new THREE.MeshBasicMaterial({
                 color: 0xffffff,
                 transparent: true,
-                opacity: 0.85
+                opacity: 0.85,
+                fog: false
             });
             const numBands = Math.floor(s.h / 1.4);
             for (let i = 1; i < numBands; i++) {
@@ -608,7 +610,8 @@ export class OfficeScene {
             const cloudMat = new THREE.MeshBasicMaterial({
                 color: 0xffffff,
                 transparent: true,
-                opacity: 0.95
+                opacity: 0.95,
+                fog: false
             });
 
             const sphereParams = [
