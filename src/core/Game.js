@@ -44,8 +44,8 @@ export class Game {
         document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
         this.scene  = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xdbe5f0); // Bright office day color
-        this.scene.fog = new THREE.Fog(0xdbe5f0, 12, 35);
+        this.scene.background = new THREE.Color(0xf1f5f9); // Extremely bright office daytime color
+        this.scene.fog = new THREE.Fog(0xf1f5f9, 15, 38);
 
         this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 50);
         this.camera.position.set(CAM_DEFAULT.x, CAM_DEFAULT.y, CAM_DEFAULT.z);
