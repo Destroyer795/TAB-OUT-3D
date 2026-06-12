@@ -372,44 +372,43 @@ export class OfficeScene {
         this.group.add(backWall);
 
         // ── Left Glass Curtain Wall ──────────────────────────
-        // Frame Material for windows
+        // Frame Material for windows (metallic silver anodized aluminum)
         const glassFrameMat = new THREE.MeshStandardMaterial({
-            color: 0xd1d7dd,
-            metalness: 0.8,
-            roughness: 0.2
+            color: 0xe2e8f0,
+            metalness: 0.9,
+            roughness: 0.1
         });
 
-        // Bottom sill
-        const sill = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 30.0), glassFrameMat);
-        sill.position.set(-12.0, 0.2, -5.0);
+        // Thin bottom sill (resting exactly at floor level)
+        const sill = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 30.0), glassFrameMat);
+        sill.position.set(-12.0, 0.06, -5.0);
         this.group.add(sill);
 
-        // Top head
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 30.0), glassFrameMat);
-        head.position.set(-12.0, 5.8, -5.0);
+        // Thin top head (meeting the ceiling)
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 30.0), glassFrameMat);
+        head.position.set(-12.0, 5.94, -5.0);
         this.group.add(head);
 
-        // Horizontal mid-rails (at height y = 2.8)
-        const midRail = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 30.0), glassFrameMat);
+        // Thin horizontal mid-rails (at height y = 2.8)
+        const midRail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 30.0), glassFrameMat);
         midRail.position.set(-12.0, 2.8, -5.0);
         this.group.add(midRail);
 
-        // Vertical window mullions (spaced every 5 units from z = -20 to z = 10)
+        // Thin vertical window mullions (spaced every 5 units from z = -20 to z = 10)
         for (let mz = -20.0; mz <= 10.0; mz += 5.0) {
-            const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.16, 5.4, 0.16), glassFrameMat);
+            const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.04, 5.76, 0.04), glassFrameMat);
             mullion.position.set(-12.0, 3.0, mz);
             this.group.add(mullion);
         }
 
-        // Semi-transparent blue-sky-tinted glass panes
-        const glassMat = new THREE.MeshStandardMaterial({
-            color: 0xbae6fd, // Sky tinted glass
+        // Highly transparent sky-tinted glass pane (MeshBasicMaterial prevents dark shadow reflections)
+        const glassMat = new THREE.MeshBasicMaterial({
+            color: 0xe2f1ff, // Crisp ice-tinted glass
             transparent: true,
-            opacity: 0.2,
-            roughness: 0.1,
-            metalness: 0.9
+            opacity: 0.08,
+            side: THREE.DoubleSide
         });
-        const glass = new THREE.Mesh(new THREE.BoxGeometry(0.02, 5.4, 30.0), glassMat);
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(0.01, 5.76, 30.0), glassMat);
         glass.position.set(-12.0, 3.0, -5.0);
         this.group.add(glass);
 
@@ -549,39 +548,37 @@ export class OfficeScene {
 
     _createCityscape() {
         // ── 1. Sky Backdrop ──────────────────────────────────
-        // A huge blue sky plane placed far to the left
-        const skyGeo = new THREE.PlaneGeometry(60, 40);
+        // A huge blue sky plane placed far to the left to span the full window view
+        const skyGeo = new THREE.PlaneGeometry(120, 80);
         const skyMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
         const sky = new THREE.Mesh(skyGeo, skyMat);
-        sky.position.set(-35.0, 15.0, -5.0);
+        sky.position.set(-48.0, 15.0, -5.0);
         sky.rotation.y = Math.PI / 2;
         this.group.add(sky);
 
-        // ── 2. Distant Skyscraper Buildings ───────────────────
+        // ── 2. Distant Skyscraper Buildings (Self-illuminated for high visibility) ───────────────────
         const skyscrapers = [
-            { x: -28, z: -16, w: 4, h: 22, d: 4, color: 0x94a3b8 },
-            { x: -32, z: -8,  w: 6, h: 32, d: 6, color: 0x64748b },
-            { x: -26, z: 0,   w: 3.5, h: 18, d: 3.5, color: 0xe2e8f0 },
-            { x: -30, z: 8,   w: 5, h: 26, d: 5, color: 0x475569 },
-            { x: -34, z: -24, w: 8, h: 15, d: 8, color: 0xcad4e0 }
+            { x: -28, z: -16, w: 4, h: 36, d: 4, color: 0xbae6fd }, // Crisp light cyan tower
+            { x: -36, z: -6,  w: 6, h: 48, d: 6, color: 0xf1f5f9 }, // Sleek white/silver tower
+            { x: -25, z: 2,   w: 3.5, h: 28, d: 3.5, color: 0x93c5fd }, // Bright blue tower
+            { x: -32, z: 12,  w: 5, h: 42, d: 5, color: 0xcbd5e1 }, // Modern gray-metal tower
+            { x: -38, z: -24, w: 8, h: 22, d: 8, color: 0x64748b }  // Medium slate tower
         ];
 
         skyscrapers.forEach(s => {
             const towerGroup = new THREE.Group();
             towerGroup.position.set(s.x, s.h / 2 - 2, s.z);
 
-            const bodyMat = new THREE.MeshStandardMaterial({
-                color: s.color,
-                roughness: 0.2,
-                metalness: 0.8
-            });
+            // Using MeshBasicMaterial ensures the buildings are brightly visible and unaffected by room lighting
+            const bodyMat = new THREE.MeshBasicMaterial({ color: s.color });
             const body = new THREE.Mesh(new THREE.BoxGeometry(s.w, s.h, s.d), bodyMat);
             towerGroup.add(body);
 
+            // Glowing office window bands
             const windowMat = new THREE.MeshBasicMaterial({
                 color: 0xffffff,
                 transparent: true,
-                opacity: 0.65
+                opacity: 0.85
             });
             const numBands = Math.floor(s.h / 1.4);
             for (let i = 1; i < numBands; i++) {
@@ -599,10 +596,10 @@ export class OfficeScene {
 
         // ── 3. Distant Clouds ─────────────────────────────────
         const cloudPositions = [
-            [-30, 12, -18],
-            [-31, 16, -6],
-            [-29, 14, 4],
-            [-32, 10, 12]
+            [-30, 15, -18],
+            [-31, 20, -6],
+            [-29, 18, 4],
+            [-32, 14, 12]
         ];
 
         cloudPositions.forEach(([cx, cy, cz]) => {
@@ -611,7 +608,7 @@ export class OfficeScene {
             const cloudMat = new THREE.MeshBasicMaterial({
                 color: 0xffffff,
                 transparent: true,
-                opacity: 0.85
+                opacity: 0.95
             });
 
             const sphereParams = [
