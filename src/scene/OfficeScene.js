@@ -336,11 +336,6 @@ export class OfficeScene {
 
     /* ── Hallway ───────────────────────────────────────── */
     _createHallway() {
-        const wallMat = new THREE.MeshStandardMaterial({
-            color: 0xf1f3f5,
-            roughness: 0.9,
-        });
-
         // Hallway floor (matching carpet)
         const hallFloor = new THREE.Mesh(
             new THREE.PlaneGeometry(14, 4),
@@ -359,98 +354,72 @@ export class OfficeScene {
         hallCeil.position.set(0, 5.99, -4.5);
         this.group.add(hallCeil);
 
-        // ── CITY SKYLINE BACKGROUND ──────────────────────────
-        // Giant sky plane - unaffected by fog so it remains bright and crisp
-        const skyGeo = new THREE.PlaneGeometry(80, 50);
-        const skyMat = new THREE.MeshBasicMaterial({ color: 0xa8c0ff, fog: false }); // Sunny office-sky blue
-        const sky = new THREE.Mesh(skyGeo, skyMat);
-        sky.position.set(0, 10, -22.0);
-        this.group.add(sky);
+        // Bright hallway back wall
+        const hallBack = new THREE.Mesh(
+            new THREE.BoxGeometry(14, 6, 0.15),
+            new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 })
+        );
+        hallBack.position.set(0, 3, -6.5);
+        this.group.add(hallBack);
 
-        // Low-poly office towers
-        const buildingMat1 = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.6 });
-        const buildingMat2 = new THREE.MeshStandardMaterial({ color: 0xe9ecef, roughness: 0.6 });
-        const buildingMat3 = new THREE.MeshStandardMaterial({ color: 0xdee2e6, roughness: 0.6 });
-        const windowMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.3 });
+        // Baseboard along the bottom of the wall
+        const baseboard = new THREE.Mesh(
+            new THREE.BoxGeometry(14, 0.15, 0.18),
+            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 })
+        );
+        baseboard.position.set(0, 0.075, -6.42);
+        this.group.add(baseboard);
 
-        // Tower 1 (Left background)
-        const tower1 = new THREE.Mesh(new THREE.BoxGeometry(4.0, 16.0, 4.0), buildingMat2);
-        tower1.position.set(-6.5, 7.0, -13.5);
-        this.group.add(tower1);
-        for (let y = 1.0; y < 14.0; y += 2.0) {
-            const strip = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.4, 0.1), windowMat);
-            strip.position.set(-6.5, y, -11.4);
-            this.group.add(strip);
-        }
+        // Office Doors (wood panels on the wall)
+        const doorGeo = new THREE.BoxGeometry(1.5, 3.2, 0.06);
+        const doorMat = new THREE.MeshStandardMaterial({ color: 0xc4b5a3, roughness: 0.7 });
+        const handleGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.12, 8);
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0xccd4dd, metalness: 0.8, roughness: 0.2 });
 
-        // Tower 2 (Center-right main tower)
-        const tower2 = new THREE.Mesh(new THREE.BoxGeometry(5.0, 22.0, 5.0), buildingMat1);
-        tower2.position.set(3.5, 9.0, -14.0);
-        this.group.add(tower2);
-        for (let y = 1.0; y < 19.0; y += 2.5) {
-            const strip = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.5, 0.1), windowMat);
-            strip.position.set(3.5, y, -11.4);
-            this.group.add(strip);
-        }
+        // Left Door
+        const doorL = new THREE.Mesh(doorGeo, doorMat);
+        doorL.position.set(-3.5, 1.6, -6.4);
+        this.group.add(doorL);
 
-        // Tower 3 (Center background, shorter)
-        const tower3 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 12.0, 3.0), buildingMat3);
-        tower3.position.set(-1.0, 5.0, -13.8);
-        this.group.add(tower3);
-        for (let y = 1.0; y < 10.0; y += 1.8) {
-            const strip = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.3, 0.1), windowMat);
-            strip.position.set(-1.0, y, -12.2);
-            this.group.add(strip);
-        }
+        const handleL = new THREE.Mesh(handleGeo, handleMat);
+        handleL.rotation.z = Math.PI / 2;
+        handleL.position.set(-2.9, 1.6, -6.34);
+        this.group.add(handleL);
 
-        // ── GLASS WINDOW WALL ─────────────────────────────────
-        // Lower sill
-        const sill = new THREE.Mesh(new THREE.BoxGeometry(14, 1.2, 0.2), wallMat);
-        sill.position.set(0, 0.6, -6.5);
-        this.group.add(sill);
+        // Right Door
+        const doorR = new THREE.Mesh(doorGeo, doorMat);
+        doorR.position.set(3.5, 1.6, -6.4);
+        this.group.add(doorR);
 
-        // Upper header
-        const header = new THREE.Mesh(new THREE.BoxGeometry(14, 1.0, 0.2), wallMat);
-        header.position.set(0, 5.5, -6.5);
-        this.group.add(header);
+        const handleR = new THREE.Mesh(handleGeo, handleMat);
+        handleR.rotation.z = Math.PI / 2;
+        handleR.position.set(2.9, 1.6, -6.34);
+        this.group.add(handleR);
 
-        // Side pillars
-        const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.2), wallMat);
-        pillarL.position.set(-6.85, 3.0, -6.5);
-        this.group.add(pillarL);
+        // Corporate framed posters
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+        
+        // Poster 1: "TEAMWORK" (Left-center)
+        const poster1Frame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, 0.04), frameMat);
+        poster1Frame.position.set(-1.0, 3.8, -6.4);
+        this.group.add(poster1Frame);
+        const poster1Canvas = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.0, 1.4),
+            new THREE.MeshBasicMaterial({ color: 0x3b82f6 }) // Blue team graphic
+        );
+        poster1Canvas.position.set(-1.0, 3.8, -6.37);
+        this.group.add(poster1Canvas);
 
-        const pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.2), wallMat);
-        pillarR.position.set(6.85, 3.0, -6.5);
-        this.group.add(pillarR);
-
-        // Vertical Mullions (charcoal window dividers)
-        const mullionGeo = new THREE.BoxGeometry(0.08, 4.3, 0.12);
-        const mullionMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.5 });
-        const xPositions = [-4.5, -1.5, 1.5, 4.5];
-        for (const x of xPositions) {
-            const mullion = new THREE.Mesh(mullionGeo, mullionMat);
-            mullion.position.set(x, 3.15, -6.45);
-            this.group.add(mullion);
-        }
-
-        // Transom horizontal bar
-        const transomBar = new THREE.Mesh(new THREE.BoxGeometry(14, 0.08, 0.12), mullionMat);
-        transomBar.position.set(0, 3.15, -6.45);
-        this.group.add(transomBar);
-
-        // Semi-transparent window glass
-        const glassGeo = new THREE.PlaneGeometry(14, 4.3);
-        const glassMat = new THREE.MeshStandardMaterial({
-            color: 0x90caf9,
-            transparent: true,
-            opacity: 0.18,
-            roughness: 0.1,
-            metalness: 0.9,
-            side: THREE.DoubleSide
-        });
-        const glass = new THREE.Mesh(glassGeo, glassMat);
-        glass.position.set(0, 3.15, -6.42);
-        this.group.add(glass);
+        // Poster 2: "SUCCESS" (Right-center)
+        const poster2Frame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, 0.04), frameMat);
+        poster2Frame.position.set(1.0, 3.8, -6.4);
+        this.group.add(poster2Frame);
+        const poster2Canvas = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.0, 1.4),
+            new THREE.MeshBasicMaterial({ color: 0x10b981 }) // Green growth chart graphic
+        );
+        poster2Canvas.position.set(1.0, 3.8, -6.37);
+        this.group.add(poster2Canvas);
     }
 
     /* ── Small Office Props ────────────────────────────── */
