@@ -29,7 +29,7 @@ export class OfficeScene {
 
     /* ── Floor ─────────────────────────────────────────── */
     _createFloor() {
-        const geo = new THREE.PlaneGeometry(20, 20);
+        const geo = new THREE.PlaneGeometry(24, 30);
         const mat = new THREE.MeshStandardMaterial({
             color: 0xe2e7ec, // Bright modern office carpet
             roughness: 0.9,
@@ -37,37 +37,40 @@ export class OfficeScene {
         });
         const floor = new THREE.Mesh(geo, mat);
         floor.rotation.x = -Math.PI / 2;
-        floor.position.y = 0;
+        floor.position.set(0, 0, -5.0);
         this.group.add(floor);
 
         // Carpet pattern (subtle grid lines)
-        const lineGeo = new THREE.PlaneGeometry(20, 0.01);
         const lineMat = new THREE.MeshBasicMaterial({ color: 0xccd4dd, transparent: true, opacity: 0.45 });
-        for (let i = -10; i < 10; i += 0.5) {
-            const h = new THREE.Mesh(lineGeo, lineMat);
+        
+        // Horizontal lines (along X, spaced along Z)
+        for (let z = -20; z <= 10; z += 0.5) {
+            const h = new THREE.Mesh(new THREE.PlaneGeometry(24, 0.01), lineMat);
             h.rotation.x = -Math.PI / 2;
-            h.position.set(0, 0.005, i);
+            h.position.set(0, 0.005, z);
             this.group.add(h);
+        }
 
-            const v = lineGeo.clone();
-            const vMesh = new THREE.Mesh(v, lineMat);
-            vMesh.rotation.x = -Math.PI / 2;
-            vMesh.rotation.z = Math.PI / 2;
-            vMesh.position.set(i, 0.005, 0);
-            this.group.add(vMesh);
+        // Vertical lines (along Z, spaced along X)
+        for (let x = -12; x <= 12; x += 0.5) {
+            const v = new THREE.Mesh(new THREE.PlaneGeometry(30, 0.01), lineMat);
+            v.rotation.x = -Math.PI / 2;
+            v.rotation.z = Math.PI / 2;
+            v.position.set(x, 0.005, -5.0);
+            this.group.add(v);
         }
     }
 
     /* ── Ceiling ───────────────────────────────────────── */
     _createCeiling() {
-        const geo = new THREE.PlaneGeometry(20, 20);
+        const geo = new THREE.PlaneGeometry(24, 30);
         const mat = new THREE.MeshStandardMaterial({
             color: 0xe8e8e8,
             roughness: 0.95,
         });
         const ceiling = new THREE.Mesh(geo, mat);
         ceiling.rotation.x = Math.PI / 2;
-        ceiling.position.y = 6;
+        ceiling.position.set(0, 6.0, -5.0);
         this.group.add(ceiling);
 
         // Ceiling tiles pattern
@@ -75,8 +78,8 @@ export class OfficeScene {
             color: 0xdddddd,
             roughness: 0.9,
         });
-        for (let x = -8; x <= 8; x += 2) {
-            for (let z = -8; z <= 8; z += 2) {
+        for (let x = -10; x <= 10; x += 2) {
+            for (let z = -18; z <= 8; z += 2) {
                 const tile = new THREE.Mesh(
                     new THREE.BoxGeometry(1.9, 0.05, 1.9),
                     tileMat
@@ -334,92 +337,119 @@ export class OfficeScene {
         this.group.add(transom);
     }
 
-    /* ── Hallway ───────────────────────────────────────── */
+    /* ── Hallway / Background Office Floor ──────────────── */
     _createHallway() {
-        // Hallway floor (matching carpet)
-        const hallFloor = new THREE.Mesh(
-            new THREE.PlaneGeometry(14, 4),
-            new THREE.MeshStandardMaterial({ color: 0xdde2e7, roughness: 0.85 })
+        const wallMat = new THREE.MeshStandardMaterial({
+            color: 0xf1f3f5, // Bright clean office drywall
+            roughness: 0.9,
+        });
+        const trimMat = new THREE.MeshStandardMaterial({
+            color: 0x475569, // Slate gray trim
+            roughness: 0.7,
+        });
+
+        // ── Distant Office Walls ─────────────────────────────
+        // Back Wall
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(24, 6.0, 0.15), wallMat);
+        backWall.position.set(0, 3.0, -20.0);
+        this.group.add(backWall);
+
+        // Left Wall
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 6.0, 30.0), wallMat);
+        leftWall.position.set(-12.0, 3.0, -5.0);
+        this.group.add(leftWall);
+
+        // Right Wall
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 6.0, 30.0), wallMat);
+        rightWall.position.set(12.0, 3.0, -5.0);
+        this.group.add(rightWall);
+
+        // Baseboards for distant walls
+        const bbBack = new THREE.Mesh(new THREE.BoxGeometry(24, 0.15, 0.18), trimMat);
+        bbBack.position.set(0, 0.075, -19.9);
+        this.group.add(bbBack);
+
+        const bbLeft = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 30.0), trimMat);
+        bbLeft.position.set(-11.9, 0.075, -5.0);
+        this.group.add(bbLeft);
+
+        const bbRight = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 30.0), trimMat);
+        bbRight.position.set(11.9, 0.075, -5.0);
+        this.group.add(bbRight);
+
+        // ── Walkway Patrol Aisle ─────────────────────────────
+        // Visual carpet strip marking the patrol pathway where the boss walks
+        const walkway = new THREE.Mesh(
+            new THREE.PlaneGeometry(24, 1.8),
+            new THREE.MeshStandardMaterial({ color: 0xc9d1db, roughness: 0.9 })
         );
-        hallFloor.rotation.x = -Math.PI / 2;
-        hallFloor.position.set(0, 0.01, -4.5);
-        this.group.add(hallFloor);
+        walkway.rotation.x = -Math.PI / 2;
+        walkway.position.set(0, 0.008, -4.5);
+        this.group.add(walkway);
 
-        // Hallway ceiling
-        const hallCeil = new THREE.Mesh(
-            new THREE.PlaneGeometry(14, 4),
-            new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.95 })
-        );
-        hallCeil.rotation.x = Math.PI / 2;
-        hallCeil.position.set(0, 5.99, -4.5);
-        this.group.add(hallCeil);
+        // Walkway borders (thin yellow/grey indicator lines)
+        const borderMat = new THREE.MeshBasicMaterial({ color: 0xa0b0c0, transparent: true, opacity: 0.6 });
+        const borderN = new THREE.Mesh(new THREE.PlaneGeometry(24, 0.02), borderMat);
+        borderN.rotation.x = -Math.PI / 2;
+        borderN.position.set(0, 0.01, -3.6);
+        this.group.add(borderN);
 
-        // Bright hallway back wall
-        const hallBack = new THREE.Mesh(
-            new THREE.BoxGeometry(14, 6, 0.15),
-            new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.9 })
-        );
-        hallBack.position.set(0, 3, -6.5);
-        this.group.add(hallBack);
+        const borderS = new THREE.Mesh(new THREE.PlaneGeometry(24, 0.02), borderMat);
+        borderS.rotation.x = -Math.PI / 2;
+        borderS.position.set(0, 0.01, -5.4);
+        this.group.add(borderS);
 
-        // Baseboard along the bottom of the wall
-        const baseboard = new THREE.Mesh(
-            new THREE.BoxGeometry(14, 0.15, 0.18),
-            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 })
-        );
-        baseboard.position.set(0, 0.075, -6.42);
-        this.group.add(baseboard);
+        // ── Background Office Workstations (Cubicle Farm) ────
+        // Row 1 (just behind the walkway, z = -7.5)
+        this._createBackgroundCubicle(-3.2, -7.5, 0);
+        this._createBackgroundCubicle(0.0, -7.5, 0); // Directly visible in the central opening
+        this._createBackgroundCubicle(3.2, -7.5, 0);
 
-        // Office Doors (wood panels on the wall)
-        const doorGeo = new THREE.BoxGeometry(1.5, 3.2, 0.06);
-        const doorMat = new THREE.MeshStandardMaterial({ color: 0xc4b5a3, roughness: 0.7 });
-        const handleGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.12, 8);
-        const handleMat = new THREE.MeshStandardMaterial({ color: 0xccd4dd, metalness: 0.8, roughness: 0.2 });
+        // Row 2 (z = -12.0)
+        this._createBackgroundCubicle(-4.8, -12.0, 0);
+        this._createBackgroundCubicle(-1.6, -12.0, 0);
+        this._createBackgroundCubicle(1.6, -12.0, 0);
+        this._createBackgroundCubicle(4.8, -12.0, 0);
 
-        // Left Door
-        const doorL = new THREE.Mesh(doorGeo, doorMat);
-        doorL.position.set(-3.5, 1.6, -6.4);
-        this.group.add(doorL);
+        // Row 3 (z = -16.5)
+        this._createBackgroundCubicle(-3.2, -16.5, 0);
+        this._createBackgroundCubicle(0.0, -16.5, 0);
+        this._createBackgroundCubicle(3.2, -16.5, 0);
 
-        const handleL = new THREE.Mesh(handleGeo, handleMat);
-        handleL.rotation.z = Math.PI / 2;
-        handleL.position.set(-2.9, 1.6, -6.34);
-        this.group.add(handleL);
+        // ── Office Props & Details in Background ──────────────
+        // File Cabinets against back wall
+        this._createFileCabinet(-9.0, -19.8);
+        this._createFileCabinet(9.0, -19.8);
 
-        // Right Door
-        const doorR = new THREE.Mesh(doorGeo, doorMat);
-        doorR.position.set(3.5, 1.6, -6.4);
-        this.group.add(doorR);
+        // Whiteboard on back wall
+        const wbFrame = new THREE.Mesh(new THREE.BoxGeometry(4.0, 2.0, 0.04), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+        wbFrame.position.set(0, 3.2, -19.9);
+        this.group.add(wbFrame);
 
-        const handleR = new THREE.Mesh(handleGeo, handleMat);
-        handleR.rotation.z = Math.PI / 2;
-        handleR.position.set(2.9, 1.6, -6.34);
-        this.group.add(handleR);
+        const wbSheet = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        wbSheet.position.set(0, 3.2, -19.86);
+        this.group.add(wbSheet);
 
-        // Corporate framed posters
-        const frameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+        // Fake scribbles on whiteboard
+        const markerMatRed = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+        const markerMatBlue = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
         
-        // Poster 1: "TEAMWORK" (Left-center)
-        const poster1Frame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, 0.04), frameMat);
-        poster1Frame.position.set(-1.0, 3.8, -6.4);
-        this.group.add(poster1Frame);
-        const poster1Canvas = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.0, 1.4),
-            new THREE.MeshBasicMaterial({ color: 0x3b82f6 }) // Blue team graphic
-        );
-        poster1Canvas.position.set(-1.0, 3.8, -6.37);
-        this.group.add(poster1Canvas);
+        const line1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.01), markerMatRed);
+        line1.position.set(-0.8, 3.5, -19.85);
+        line1.rotation.z = -0.15;
+        this.group.add(line1);
 
-        // Poster 2: "SUCCESS" (Right-center)
-        const poster2Frame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, 0.04), frameMat);
-        poster2Frame.position.set(1.0, 3.8, -6.4);
-        this.group.add(poster2Frame);
-        const poster2Canvas = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.0, 1.4),
-            new THREE.MeshBasicMaterial({ color: 0x10b981 }) // Green growth chart graphic
-        );
-        poster2Canvas.position.set(1.0, 3.8, -6.37);
-        this.group.add(poster2Canvas);
+        const line2 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 0.01), markerMatBlue);
+        line2.position.set(0.5, 3.1, -19.85);
+        line2.rotation.z = 0.08;
+        this.group.add(line2);
+
+        // Water cooler moved to the left aisle
+        this._createWaterCooler(-8.0, 0, -4.5);
+
+        // Potted plants in empty spots
+        this._createPlant(-6.5, 0, -10.0);
+        this._createPlant(6.5, 0, -10.0);
     }
 
     /* ── Small Office Props ────────────────────────────── */
@@ -444,9 +474,6 @@ export class OfficeScene {
 
         // Potted plant on neighboring cubicle
         this._createPlant(2.5, 0.0, -3.0);
-
-        // Water cooler in hallway
-        this._createWaterCooler(4, 0, -5.0);
     }
 
     _createMug(x, y, z) {
@@ -654,6 +681,137 @@ export class OfficeScene {
         );
         jug.position.set(x, y + 1.2, z);
         this.group.add(jug);
+    }
+
+    _createBackgroundCubicle(x, z, rotationY = 0) {
+        const cubicleGroup = new THREE.Group();
+        cubicleGroup.position.set(x, 0, z);
+        cubicleGroup.rotation.y = rotationY;
+
+        // Desk top
+        const deskMat = new THREE.MeshStandardMaterial({ color: 0xf3f4f6, roughness: 0.5 });
+        const desk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.8), deskMat);
+        desk.position.set(0, 0.82, 0);
+        cubicleGroup.add(desk);
+
+        // Desk legs (simplified)
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x8a95a5, metalness: 0.5, roughness: 0.4 });
+        const legGeo = new THREE.BoxGeometry(0.04, 0.82, 0.04);
+        const legPositions = [
+            [-0.75, 0.41, -0.35],
+            [ 0.75, 0.41, -0.35],
+            [-0.75, 0.41,  0.35],
+            [ 0.75, 0.41,  0.35]
+        ];
+        for (const pos of legPositions) {
+            const leg = new THREE.Mesh(legGeo, legMat);
+            leg.position.set(pos[0], pos[1], pos[2]);
+            cubicleGroup.add(leg);
+        }
+
+        // Cubicle partition walls (back and sides)
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0xd6dee6, roughness: 0.9 }); // light blue-gray fabric
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0xb0b7bd, metalness: 0.6, roughness: 0.3 });
+
+        // Back wall
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.04), wallMat);
+        backWall.position.set(0, 0.7, -0.4);
+        cubicleGroup.add(backWall);
+
+        const backTrim = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.03, 0.06), frameMat);
+        backTrim.position.set(0, 1.4, -0.4);
+        cubicleGroup.add(backTrim);
+
+        // Left wall
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.4, 0.8), wallMat);
+        leftWall.position.set(-0.8, 0.7, 0);
+        cubicleGroup.add(leftWall);
+
+        const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.8), frameMat);
+        leftTrim.position.set(-0.8, 1.4, 0);
+        cubicleGroup.add(leftTrim);
+
+        // Right wall
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.4, 0.8), wallMat);
+        rightWall.position.set(0.8, 0.7, 0);
+        cubicleGroup.add(rightWall);
+
+        const rightTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.8), frameMat);
+        rightTrim.position.set(0.8, 1.4, 0);
+        cubicleGroup.add(rightTrim);
+
+        // Monitor
+        const monMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+        
+        // Let some screens be on (glowing spreadsheet green or blue)
+        const screenOn = Math.random() > 0.4;
+        const screenOnMat = new THREE.MeshBasicMaterial({ color: screenOn ? (Math.random() > 0.5 ? 0x22c55e : 0x3b82f6) : 0x0f172a });
+
+        // Monitor body
+        const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 0.04), monMat);
+        monitor.position.set(0, 1.0, -0.2);
+        cubicleGroup.add(monitor);
+
+        // Monitor screen face (facing towards the desk/chair, so towards +Z)
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.43, 0.28), screenOnMat);
+        screen.position.set(0, 1.0, -0.178);
+        cubicleGroup.add(screen);
+
+        // Monitor stand
+        const stand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.08), monMat);
+        stand.position.set(0, 0.9, -0.2);
+        cubicleGroup.add(stand);
+
+        // Keyboard (simple flat box)
+        const kb = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.015, 0.12), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+        kb.position.set(0, 0.835, 0.05);
+        cubicleGroup.add(kb);
+
+        // Chair (simple mesh)
+        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.35), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }));
+        chairSeat.position.set(0, 0.45, 0.2);
+        cubicleGroup.add(chairSeat);
+
+        const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.03), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }));
+        chairBack.position.set(0, 0.7, 0.35);
+        chairBack.rotation.x = 0.08;
+        cubicleGroup.add(chairBack);
+
+        const chairPost = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6 }));
+        chairPost.position.set(0, 0.3, 0.2);
+        cubicleGroup.add(chairPost);
+
+        this.group.add(cubicleGroup);
+    }
+
+    _createFileCabinet(x, z) {
+        const cabMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5 }); // metallic grey
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 });
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.0, 0.6), cabMat);
+        body.position.set(x, 1.0, z);
+        this.group.add(body);
+
+        // Drawers (visual ridges)
+        for (let i = 0; i < 4; i++) {
+            const drawerY = 0.25 + i * 0.48;
+            
+            // Drawer line groove
+            const line = new THREE.Mesh(
+                new THREE.BoxGeometry(0.92, 0.02, 0.02),
+                new THREE.MeshStandardMaterial({ color: 0x475569 })
+            );
+            line.position.set(x, drawerY, z + 0.301);
+            this.group.add(line);
+
+            // Handle
+            const handle = new THREE.Mesh(
+                new THREE.BoxGeometry(0.25, 0.03, 0.04),
+                handleMat
+            );
+            handle.position.set(x, drawerY + 0.12, z + 0.31);
+            this.group.add(handle);
+        }
     }
 
     dispose() {
