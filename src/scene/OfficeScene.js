@@ -835,8 +835,8 @@ export class OfficeScene {
         // Pen holder
         this._createPenHolder(0.85, 0.85, -0.45);
 
-        // Sticky notes
-        this._createStickyNote(-1.5, 1.5, -1.0);
+        // Sticky notes (placed on a small board on the player's left cubicle wall)
+        this._createStickyNote(-1.77, 1.0, -0.6);
 
         // Photo frame
         this._createPhotoFrame(-1.0, 0.85, -1.0);
@@ -950,19 +950,43 @@ export class OfficeScene {
     }
 
     _createStickyNote(x, y, z) {
-        const colors = [0xfff176, 0xff8a80, 0x80d8ff];
-        for (let i = 0; i < 3; i++) {
+        // ── Corkboard Frame (brown wood) ─────────────────────
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.7 });
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.48, 0.88), frameMat);
+        frame.position.set(x - 0.01, y, z);
+        this.group.add(frame);
+
+        // Cork center panel
+        const corkMat = new THREE.MeshStandardMaterial({ color: 0xbca58c, roughness: 0.95 });
+        const board = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.44, 0.84), corkMat);
+        board.position.set(x - 0.005, y, z);
+        this.group.add(board);
+
+        // 3 Sticky Notes pinned to the corkboard (facing positive X)
+        const colors = [0xfff176, 0xff8a80, 0x80d8ff]; // Yellow, pink, blue
+        const noteOffsets = [
+            { dy: 0.1, dz: -0.22 },
+            { dy: -0.08, dz: 0.0 },
+            { dy: 0.08, dz: 0.22 }
+        ];
+
+        noteOffsets.forEach((offset, i) => {
             const note = new THREE.Mesh(
                 new THREE.PlaneGeometry(0.15, 0.15),
                 new THREE.MeshStandardMaterial({
                     color: colors[i],
                     roughness: 0.9,
-                    side: THREE.DoubleSide,
+                    side: THREE.DoubleSide
                 })
             );
-            note.position.set(x + i * 0.18, y + (i % 2) * 0.1, z + 0.01);
+            // Rotate the plane to face +X (normal along +X)
+            note.rotation.y = Math.PI / 2;
+            // Angle the note slightly so it looks naturally pinned
+            note.rotation.x = (Math.random() - 0.5) * 0.12;
+
+            note.position.set(x + 0.006, y + offset.dy, z + offset.dz);
             this.group.add(note);
-        }
+        });
     }
 
     _createPhotoFrame(x, y, z) {
