@@ -31,7 +31,7 @@ export class OfficeScene {
     _createFloor() {
         const geo = new THREE.PlaneGeometry(24, 30);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0xf1f5f9, // Extremely light, bright office carpet
+            color: 0xfafbfc, // Ultra-light warm white carpet
             roughness: 0.9,
             metalness: 0.0,
         });
@@ -41,7 +41,7 @@ export class OfficeScene {
         this.group.add(floor);
 
         // Carpet pattern (subtle grid lines)
-        const lineMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.45 });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xf3f4f6, transparent: true, opacity: 0.45 });
         
         // Horizontal lines (along X, spaced along Z)
         for (let z = -20; z <= 10; z += 0.5) {
@@ -65,7 +65,7 @@ export class OfficeScene {
     _createCeiling() {
         const geo = new THREE.PlaneGeometry(24, 30);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0xfafafa, // Brighter white ceiling
+            color: 0xffffff, // Pure white ceiling
             roughness: 0.95,
         });
         const ceiling = new THREE.Mesh(geo, mat);
@@ -75,7 +75,7 @@ export class OfficeScene {
 
         // Ceiling tiles pattern (bright off-white)
         const tileMat = new THREE.MeshStandardMaterial({
-            color: 0xf1f5f9,
+            color: 0xf8fafc,
             roughness: 0.9,
         });
         for (let x = -10; x <= 10; x += 2) {
@@ -94,7 +94,7 @@ export class OfficeScene {
     }
 
     _createLongLights() {
-        const fixtureMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
+        const fixtureMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 }); // Lighter light-fixture casing
         const glowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
         // A grid of long light fixtures running along the Z axis
@@ -302,7 +302,7 @@ export class OfficeScene {
             roughness: 0.85,
         });
         const frameMat = new THREE.MeshStandardMaterial({
-            color: 0xb2bac2, // Polished aluminum/chrome frame
+            color: 0xe2e8f0, // Extremely bright aluminum/chrome frame
             roughness: 0.25,
             metalness: 0.8,
         });
@@ -367,11 +367,11 @@ export class OfficeScene {
     /* ── Hallway / Background Office Floor ──────────────── */
     _createHallway() {
         const wallMat = new THREE.MeshStandardMaterial({
-            color: 0xfafafa, // Extremely bright white drywall
+            color: 0xffffff, // Pure bright white drywall
             roughness: 0.9,
         });
         const trimMat = new THREE.MeshStandardMaterial({
-            color: 0x8fa0b5, // Soft, light steel gray trim (not dark)
+            color: 0xdbe1e8, // Soft, extremely light silver gray trim
             roughness: 0.7,
         });
 
@@ -408,14 +408,14 @@ export class OfficeScene {
         // Visual carpet strip marking the patrol pathway where the boss walks
         const walkway = new THREE.Mesh(
             new THREE.PlaneGeometry(24, 1.8),
-            new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 }) // Lighter carpet strip
+            new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.9 }) // Ultra-light carpet strip
         );
         walkway.rotation.x = -Math.PI / 2;
         walkway.position.set(0, 0.008, -4.5);
         this.group.add(walkway);
 
-        // Walkway borders (subtle light gray indicator lines)
-        const borderMat = new THREE.MeshBasicMaterial({ color: 0xd1dbe5, transparent: true, opacity: 0.6 });
+        // Walkway borders (extremely light subtle gray lines)
+        const borderMat = new THREE.MeshBasicMaterial({ color: 0xf1f5f9, transparent: true, opacity: 0.6 });
         const borderN = new THREE.Mesh(new THREE.PlaneGeometry(24, 0.02), borderMat);
         borderN.rotation.x = -Math.PI / 2;
         borderN.position.set(0, 0.01, -3.6);
@@ -737,8 +737,8 @@ export class OfficeScene {
         }
 
         // Cubicle partition walls (back and sides)
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.9 }); // Extremely light off-white fabric
-        const frameMat = new THREE.MeshStandardMaterial({ color: 0xd1d7dd, metalness: 0.6, roughness: 0.3 });
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }); // Pure white fabric
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.6, roughness: 0.3 }); // Extremely light gray trim
 
         // Back wall
         const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.04), wallMat);
@@ -789,22 +789,22 @@ export class OfficeScene {
         stand.position.set(0, 0.9, -0.2);
         cubicleGroup.add(stand);
 
-        // Keyboard (simple flat box)
-        const kb = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.015, 0.12), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+        // Keyboard (simple flat box, lighter gray)
+        const kb = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.015, 0.12), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }));
         kb.position.set(0, 0.835, 0.05);
         cubicleGroup.add(kb);
 
-        // Chair (simple mesh)
-        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.35), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }));
+        // Chair (simple mesh, lighter gray fabric)
+        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.35), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
         chairSeat.position.set(0, 0.45, 0.2);
         cubicleGroup.add(chairSeat);
 
-        const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.03), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }));
+        const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.03), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
         chairBack.position.set(0, 0.7, 0.35);
         chairBack.rotation.x = 0.08;
         cubicleGroup.add(chairBack);
 
-        const chairPost = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6 }));
+        const chairPost = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x8fa0b5, metalness: 0.6 }));
         chairPost.position.set(0, 0.3, 0.2);
         cubicleGroup.add(chairPost);
 
@@ -812,8 +812,8 @@ export class OfficeScene {
     }
 
     _createFileCabinet(x, z) {
-        const cabMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5 }); // metallic grey
-        const handleMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.2 });
+        const cabMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 }); // Lighter metallic gray
+        const handleMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.8, roughness: 0.2 });
 
         const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 2.0, 0.6), cabMat);
         body.position.set(x, 1.0, z);
@@ -823,10 +823,10 @@ export class OfficeScene {
         for (let i = 0; i < 4; i++) {
             const drawerY = 0.25 + i * 0.48;
             
-            // Drawer line groove
+            // Drawer line groove (lighter gray)
             const line = new THREE.Mesh(
                 new THREE.BoxGeometry(0.92, 0.02, 0.02),
-                new THREE.MeshStandardMaterial({ color: 0x475569 })
+                new THREE.MeshStandardMaterial({ color: 0xbac2cc })
             );
             line.position.set(x, drawerY, z + 0.301);
             this.group.add(line);
