@@ -30,8 +30,8 @@ import { Menu }           from '../ui/Menu.js';
 import { GameOverScreen } from '../ui/GameOverScreen.js';
 
 /* ── Camera defaults ──────────────────────────────────── */
-const CAM_DEFAULT  = { x: 0, y: 2.1, z: 1.8, lookY: 1.6 };
-const CAM_HIDING   = { x: 0, y: 1.4, z: 1.4, lookY: 1.2 };
+const CAM_DEFAULT  = { x: 0, y: 2.1, z: 1.8, lookY: 1.45 };
+const CAM_HIDING   = { x: 0, y: 1.4, z: 1.4, lookY: 1.05 };
 
 export class Game {
     constructor() {

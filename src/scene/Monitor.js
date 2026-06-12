@@ -40,7 +40,7 @@ export class Monitor {
         const screenGeo = new THREE.PlaneGeometry(1.6, 0.9);
         this._screenMat = new THREE.MeshBasicMaterial({ map: this.texture });
         this._screen = new THREE.Mesh(screenGeo, this._screenMat);
-        this._screen.position.set(0, 1.75, -1.05);
+        this._screen.position.set(0, 1.6, -1.05);
         this._screen.rotation.x = -0.05;   // slight tilt
         this.group.add(this._screen);
 
@@ -54,7 +54,7 @@ export class Monitor {
         // Back
         const backGeo = new THREE.BoxGeometry(1.7, 1.0, 0.08);
         const back = new THREE.Mesh(backGeo, bezelMat);
-        back.position.set(0, 1.75, -1.1);
+        back.position.set(0, 1.6, -1.1);
         back.rotation.x = -0.05;
         this.group.add(back);
 
@@ -66,18 +66,18 @@ export class Monitor {
         });
         const topBezel = new THREE.BoxGeometry(1.72, 0.04, 0.09);
         const tb = new THREE.Mesh(topBezel, frameMat);
-        tb.position.set(0, 2.27, -1.08);
+        tb.position.set(0, 2.12, -1.08);
         this.group.add(tb);
 
         const botBezel = new THREE.BoxGeometry(1.72, 0.06, 0.09);
         const bb = new THREE.Mesh(botBezel, frameMat);
-        bb.position.set(0, 1.23, -1.08);
+        bb.position.set(0, 1.08, -1.08);
         this.group.add(bb);
 
         // Stand neck
-        const neckGeo = new THREE.BoxGeometry(0.08, 0.4, 0.08);
+        const neckGeo = new THREE.BoxGeometry(0.08, 0.25, 0.08);
         const neck = new THREE.Mesh(neckGeo, bezelMat);
-        neck.position.set(0, 1.05, -1.1);
+        neck.position.set(0, 0.975, -1.1);
         this.group.add(neck);
 
         // Stand base

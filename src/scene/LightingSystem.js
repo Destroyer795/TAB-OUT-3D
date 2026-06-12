@@ -38,7 +38,7 @@ export class LightingSystem {
 
         // Monitor glow (will be tinted during gameplay)
         this.monitorGlow = new THREE.PointLight(0x00ffaa, 0.35, 4);
-        this.monitorGlow.position.set(0, 1.8, -0.5);
+        this.monitorGlow.position.set(0, 1.65, -0.5);
         this.scene.add(this.monitorGlow);
         this.lights.push(this.monitorGlow);
 
