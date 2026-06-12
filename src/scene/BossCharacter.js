@@ -28,103 +28,113 @@ export class BossCharacter {
     }
 
     _build() {
-        const suitMat = new THREE.MeshStandardMaterial({
-            color: 0x2c3e50, // Dark grey/blue suit
-            roughness: 0.8,
-            metalness: 0.1,
-        });
-        const skinMat = new THREE.MeshStandardMaterial({
-            color: 0xffcca8, // Skin tone
-            roughness: 0.6,
-        });
-        const shirtMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.9,
-        });
-        const tieMat = new THREE.MeshStandardMaterial({
-            color: 0xc0392b, // Red tie
-            roughness: 0.7,
-        });
-        const shoeMat = new THREE.MeshStandardMaterial({
-            color: 0x111111,
-            roughness: 0.4,
-            metalness: 0.2,
-        });
+        const suitMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.8 });
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffcca8, roughness: 0.6 });
+        const shirtMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+        const tieMat = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.7 });
+        const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
 
-        // Body – suit jacket
-        const bodyGeo = new THREE.BoxGeometry(0.8, 1.4, 0.4);
-        const body = new THREE.Mesh(bodyGeo, suitMat);
-        body.position.y = 1.9;
-        this.group.add(body);
+        // Base group to control full model positioning
+        this.modelGroup = new THREE.Group();
+        this.group.add(this.modelGroup);
+        // Shift up so feet hit the floor at Y=0
+        this.modelGroup.position.y = 1.35;
 
-        // Shirt
-        const shirtGeo = new THREE.BoxGeometry(0.3, 1.35, 0.45);
+        // Torso
+        const torsoGeo = new THREE.CylinderGeometry(0.35, 0.3, 1.4, 16);
+        const torso = new THREE.Mesh(torsoGeo, suitMat);
+        torso.scale.z = 0.6; // Flatten the cylinder front-to-back
+        torso.position.y = 0.7; // Center of torso
+        this.modelGroup.add(torso);
+
+        // Shirt (plane on front of torso)
+        const shirtGeo = new THREE.PlaneGeometry(0.25, 1.0);
         const shirt = new THREE.Mesh(shirtGeo, shirtMat);
-        shirt.position.y = 1.9;
-        this.group.add(shirt);
+        shirt.position.set(0, 0.8, 0.19);
+        this.modelGroup.add(shirt);
 
         // Tie
-        const tieGeo = new THREE.BoxGeometry(0.1, 0.8, 0.5);
+        const tieGeo = new THREE.PlaneGeometry(0.06, 0.7);
         const tie = new THREE.Mesh(tieGeo, tieMat);
-        tie.position.y = 2.0;
-        this.group.add(tie);
+        tie.position.set(0, 0.8, 0.20);
+        this.modelGroup.add(tie);
 
         // Head
-        const headGeo = new THREE.BoxGeometry(0.4, 0.5, 0.4);
+        const headGeo = new THREE.SphereGeometry(0.25, 16, 16);
         const head = new THREE.Mesh(headGeo, skinMat);
-        head.position.y = 2.85;
-        this.group.add(head);
+        head.position.y = 1.65;
+        this.modelGroup.add(head);
 
-        // Hair (simple box on top of head)
+        // Hair (half-sphere on top)
         const hairMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.9 });
-        const hairGeo = new THREE.BoxGeometry(0.45, 0.15, 0.45);
+        const hairGeo = new THREE.SphereGeometry(0.26, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
         const hair = new THREE.Mesh(hairGeo, hairMat);
-        hair.position.y = 3.15;
-        this.group.add(hair);
+        hair.position.y = 1.65;
+        this.modelGroup.add(hair);
 
-        // Arms
-        const armGeo = new THREE.BoxGeometry(0.25, 1.2, 0.25);
-        const leftArm = new THREE.Mesh(armGeo, suitMat);
-        leftArm.position.set(-0.55, 1.9, 0);
-        this.group.add(leftArm);
-        this._leftArm = leftArm;
+        // Shoulders
+        const shoulderGeo = new THREE.SphereGeometry(0.18, 16, 16);
+        const leftShoulder = new THREE.Mesh(shoulderGeo, suitMat);
+        leftShoulder.position.set(-0.4, 1.3, 0);
+        this.modelGroup.add(leftShoulder);
+        
+        const rightShoulder = new THREE.Mesh(shoulderGeo, suitMat);
+        rightShoulder.position.set(0.4, 1.3, 0);
+        this.modelGroup.add(rightShoulder);
 
-        const rightArm = new THREE.Mesh(armGeo, suitMat);
-        rightArm.position.set(0.55, 1.9, 0);
-        this.group.add(rightArm);
-        this._rightArm = rightArm;
+        // Arm Pivots (located at the shoulders)
+        this._leftArm = new THREE.Group();
+        this._leftArm.position.set(-0.4, 1.3, 0);
+        this.modelGroup.add(this._leftArm);
+
+        this._rightArm = new THREE.Group();
+        this._rightArm.position.set(0.4, 1.3, 0);
+        this.modelGroup.add(this._rightArm);
+
+        // Arm Meshes
+        const armGeo = new THREE.CylinderGeometry(0.1, 0.08, 1.1, 16);
+        const armMeshL = new THREE.Mesh(armGeo, suitMat);
+        armMeshL.position.y = -0.55; // Shift down half length
+        this._leftArm.add(armMeshL);
+        const armMeshR = new THREE.Mesh(armGeo, suitMat);
+        armMeshR.position.y = -0.55;
+        this._rightArm.add(armMeshR);
 
         // Hands
-        const handGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-        const leftHand = new THREE.Mesh(handGeo, skinMat);
-        leftHand.position.set(0, -0.7, 0);
-        this._leftArm.add(leftHand);
+        const handGeo = new THREE.SphereGeometry(0.1, 16, 16);
+        const handL = new THREE.Mesh(handGeo, skinMat);
+        handL.position.y = -1.15;
+        this._leftArm.add(handL);
+        const handR = new THREE.Mesh(handGeo, skinMat);
+        handR.position.y = -1.15;
+        this._rightArm.add(handR);
 
-        const rightHand = new THREE.Mesh(handGeo, skinMat);
-        rightHand.position.set(0, -0.7, 0);
-        this._rightArm.add(rightHand);
+        // Leg Pivots (located at the hips)
+        this._leftLeg = new THREE.Group();
+        this._leftLeg.position.set(-0.18, 0, 0);
+        this.modelGroup.add(this._leftLeg);
 
-        // Legs (Trousers)
-        const legGeo = new THREE.BoxGeometry(0.3, 1.2, 0.3);
-        const leftLeg = new THREE.Mesh(legGeo, suitMat);
-        leftLeg.position.set(-0.2, 0.6, 0);
-        this.group.add(leftLeg);
-        this._leftLeg = leftLeg;
+        this._rightLeg = new THREE.Group();
+        this._rightLeg.position.set(0.18, 0, 0);
+        this.modelGroup.add(this._rightLeg);
 
-        const rightLeg = new THREE.Mesh(legGeo, suitMat);
-        rightLeg.position.set(0.2, 0.6, 0);
-        this.group.add(rightLeg);
-        this._rightLeg = rightLeg;
+        // Leg Meshes
+        const legGeo = new THREE.CylinderGeometry(0.14, 0.11, 1.2, 16);
+        const legMeshL = new THREE.Mesh(legGeo, suitMat);
+        legMeshL.position.y = -0.6;
+        this._leftLeg.add(legMeshL);
+        const legMeshR = new THREE.Mesh(legGeo, suitMat);
+        legMeshR.position.y = -0.6;
+        this._rightLeg.add(legMeshR);
 
         // Shoes
-        const shoeGeo = new THREE.BoxGeometry(0.3, 0.15, 0.4);
-        const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
-        leftShoe.position.set(0, -0.6, 0.05);
-        this._leftLeg.add(leftShoe);
-
-        const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
-        rightShoe.position.set(0, -0.6, 0.05);
-        this._rightLeg.add(rightShoe);
+        const shoeGeo = new THREE.BoxGeometry(0.22, 0.15, 0.35);
+        const shoeL = new THREE.Mesh(shoeGeo, shoeMat);
+        shoeL.position.set(0, -1.25, 0.05);
+        this._leftLeg.add(shoeL);
+        const shoeR = new THREE.Mesh(shoeGeo, shoeMat);
+        shoeR.position.set(0, -1.25, 0.05);
+        this._rightLeg.add(shoeR);
     }
 
     /**
@@ -150,15 +160,15 @@ export class BossCharacter {
         this.group.position.x = lerp(this._startX, this._endX, progress);
         this.group.position.z = this._posZ;
 
-        // Walking animation – arm/leg swing
-        const swing = Math.sin(progress * Math.PI * 6) * 0.3;
+        // Walking animation – realistic arm/leg swing
+        const swing = Math.sin(progress * Math.PI * 6) * 0.45;
         this._leftArm.rotation.x  =  swing;
         this._rightArm.rotation.x = -swing;
         this._leftLeg.rotation.x  = -swing;
         this._rightLeg.rotation.x =  swing;
 
-        // Subtle body bob
-        this.group.position.y = Math.abs(Math.sin(progress * Math.PI * 6)) * 0.06;
+        // Subtle body bobbing
+        this.modelGroup.position.y = 1.35 + Math.abs(Math.sin(progress * Math.PI * 6)) * 0.05;
     }
 
     dispose() {
