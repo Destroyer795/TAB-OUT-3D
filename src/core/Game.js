@@ -384,10 +384,12 @@ export class Game {
             return;
         }
 
-        // ── Productivity drain ───────────────────
+        // ── Productivity drain & recovery ────────
         // Drains when hiding AND boss is NOT present
         const isDraining = !this._showingArcade && this.bossSystem.phase !== 'present';
-        this.productivity.update(dt, isDraining);
+        // Recovers when playing arcade game
+        const isRecovering = this._showingArcade;
+        this.productivity.update(dt, isDraining, isRecovering);
         this.hud.setProductivity(this.productivity.value);
 
         // ── Arcade game update ───────────────────
