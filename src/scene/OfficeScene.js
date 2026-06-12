@@ -829,8 +829,8 @@ export class OfficeScene {
         // Desk lamp
         this._createLamp(1.0, 0.85, -0.85);
 
-        // Stack of papers
-        this._createPaperStack(-0.7, 0.85, -0.85);
+        // Notebook (replaces the stacked papers)
+        this._createNotebook(-0.7, 0.85, -0.8);
 
         // Pen holder
         this._createPenHolder(0.85, 0.85, -0.45);
@@ -874,53 +874,104 @@ export class OfficeScene {
 
     _createLamp(x, y, z) {
         const metalMat = new THREE.MeshStandardMaterial({
-            color: 0x555555,
-            roughness: 0.3,
-            metalness: 0.7,
+            color: 0x1e293b, // Matte dark slate/black
+            roughness: 0.5,
+            metalness: 0.6,
         });
 
-        // Base
+        // Sleek round base
         const base = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.1, 0.02, 12),
+            new THREE.CylinderGeometry(0.08, 0.08, 0.015, 12),
             metalMat
         );
-        base.position.set(x, y + 0.01, z);
+        base.position.set(x, y + 0.008, z);
         this.group.add(base);
 
-        // Arm
-        const arm = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.01, 0.01, 0.4, 6),
+        // Lower arm segment (angled)
+        const lowerArm = new THREE.Mesh(
+            new THREE.BoxGeometry(0.016, 0.22, 0.016),
             metalMat
         );
-        arm.position.set(x, y + 0.22, z);
-        arm.rotation.z = 0.2;
-        this.group.add(arm);
+        lowerArm.position.set(x - 0.03, y + 0.11, z);
+        lowerArm.rotation.z = 0.25; // Leaning inward
+        this.group.add(lowerArm);
 
-        // Shade
-        const shade = new THREE.Mesh(
-            new THREE.ConeGeometry(0.08, 0.08, 12, 1, true),
-            new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.7, side: THREE.DoubleSide })
+        // Elbow joint sphere
+        const joint = new THREE.Mesh(
+            new THREE.SphereGeometry(0.02, 8, 8),
+            metalMat
         );
-        shade.position.set(x + 0.08, y + 0.42, z);
-        shade.rotation.z = 0.2;
-        this.group.add(shade);
+        joint.position.set(x - 0.05, y + 0.22, z);
+        this.group.add(joint);
+
+        // Upper arm segment (angled back over the desk)
+        const upperArm = new THREE.Mesh(
+            new THREE.BoxGeometry(0.016, 0.2, 0.016),
+            metalMat
+        );
+        upperArm.position.set(x - 0.1, y + 0.29, z);
+        upperArm.rotation.z = -0.55; // Reaching over desk
+        this.group.add(upperArm);
+
+        // Sleek modern horizontal head
+        const head = new THREE.Mesh(
+            new THREE.BoxGeometry(0.24, 0.025, 0.07),
+            metalMat
+        );
+        head.position.set(x - 0.18, y + 0.38, z);
+        head.rotation.z = -0.1;
+        this.group.add(head);
+
+        // Glowing light emitter under the head
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0xfffee0 });
+        const glow = new THREE.Mesh(
+            new THREE.BoxGeometry(0.22, 0.005, 0.06),
+            glowMat
+        );
+        glow.position.set(x - 0.18, y + 0.365, z);
+        glow.rotation.z = -0.1;
+        this.group.add(glow);
     }
 
-    _createPaperStack(x, y, z) {
-        const mat = new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.95 });
-        for (let i = 0; i < 5; i++) {
-            const paper = new THREE.Mesh(
-                new THREE.BoxGeometry(0.15, 0.004, 0.2),
-                mat
+    _createNotebook(x, y, z) {
+        const notebookGroup = new THREE.Group();
+        notebookGroup.position.set(x, y, z);
+        notebookGroup.rotation.y = 0.15; // slightly angled
+
+        // Leather cover (navy blue)
+        const coverMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.8 });
+        const cover = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.01, 0.26), coverMat);
+        cover.position.set(0, 0.005, 0);
+        notebookGroup.add(cover);
+
+        // Cream paper pages
+        const paperMat = new THREE.MeshStandardMaterial({ color: 0xfffaf0, roughness: 0.9 });
+        
+        // Left page (slightly tilted)
+        const leftPage = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.008, 0.24), paperMat);
+        leftPage.position.set(-0.09, 0.01, 0);
+        leftPage.rotation.z = 0.03; // angled open
+        notebookGroup.add(leftPage);
+
+        // Right page (slightly tilted)
+        const rightPage = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.008, 0.24), paperMat);
+        rightPage.position.set(0.09, 0.01, 0);
+        rightPage.rotation.z = -0.03; // angled open
+        notebookGroup.add(rightPage);
+
+        // Spiral binding (silver metal rings along the center spine)
+        const spiralMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
+        for (let i = -0.11; i <= 0.11; i += 0.03) {
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(0.012, 0.003, 4, 8),
+                spiralMat
             );
-            paper.position.set(
-                x + Math.random() * 0.02,
-                y + 0.002 + i * 0.005,
-                z + Math.random() * 0.02
-            );
-            paper.rotation.y = (Math.random() - 0.5) * 0.1;
-            this.group.add(paper);
+            ring.rotation.y = Math.PI / 2;
+            ring.position.set(0, 0.014, i);
+            notebookGroup.add(ring);
         }
+
+        this.group.add(notebookGroup);
     }
 
     _createPenHolder(x, y, z) {
@@ -950,16 +1001,16 @@ export class OfficeScene {
     }
 
     _createStickyNote(x, y, z) {
-        // ── Corkboard Frame (brown wood) ─────────────────────
+        // ── Corkboard Frame (brown wood, placed safely clear of the partition wall surface) ─────────────────────
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.7 });
         const frame = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.48, 0.88), frameMat);
-        frame.position.set(x - 0.01, y, z);
+        frame.position.set(-1.75, y, z);
         this.group.add(frame);
 
         // Cork center panel
         const corkMat = new THREE.MeshStandardMaterial({ color: 0xbca58c, roughness: 0.95 });
         const board = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.44, 0.84), corkMat);
-        board.position.set(x - 0.005, y, z);
+        board.position.set(-1.73, y, z);
         this.group.add(board);
 
         // 3 Sticky Notes pinned to the corkboard (facing positive X)
@@ -984,7 +1035,8 @@ export class OfficeScene {
             // Angle the note slightly so it looks naturally pinned
             note.rotation.x = (Math.random() - 0.5) * 0.12;
 
-            note.position.set(x + 0.006, y + offset.dy, z + offset.dz);
+            // Place note clearly in front of the corkboard to prevent clipping (Z-fighting)
+            note.position.set(-1.71, y + offset.dy, z + offset.dz);
             this.group.add(note);
         });
     }
