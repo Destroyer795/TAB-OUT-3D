@@ -31,7 +31,7 @@ export class OfficeScene {
     _createFloor() {
         const geo = new THREE.PlaneGeometry(20, 20);
         const mat = new THREE.MeshStandardMaterial({
-            color: 0x6b7b8a,
+            color: 0xe2e7ec, // Bright modern office carpet
             roughness: 0.9,
             metalness: 0.0,
         });
@@ -42,7 +42,7 @@ export class OfficeScene {
 
         // Carpet pattern (subtle grid lines)
         const lineGeo = new THREE.PlaneGeometry(20, 0.01);
-        const lineMat = new THREE.MeshBasicMaterial({ color: 0x5f6f7e, transparent: true, opacity: 0.3 });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xccd4dd, transparent: true, opacity: 0.45 });
         for (let i = -10; i < 10; i += 0.5) {
             const h = new THREE.Mesh(lineGeo, lineMat);
             h.rotation.x = -Math.PI / 2;
@@ -90,9 +90,9 @@ export class OfficeScene {
     /* ── Desk ──────────────────────────────────────────── */
     _createDesk() {
         const deskMat = new THREE.MeshStandardMaterial({
-            color: 0xb89470,
-            roughness: 0.7,
-            metalness: 0.05,
+            color: 0xf8f9fa, // Clean modern white office desk top
+            roughness: 0.5,
+            metalness: 0.1,
         });
 
         // Desk top
@@ -105,9 +105,9 @@ export class OfficeScene {
 
         // Legs
         const legMat = new THREE.MeshStandardMaterial({
-            color: 0x666666,
-            roughness: 0.5,
-            metalness: 0.5,
+            color: 0x8e9aa6, // Light aluminum legs
+            roughness: 0.3,
+            metalness: 0.8,
         });
         const legGeo = new THREE.BoxGeometry(0.06, 0.82, 0.06);
         const positions = [
@@ -124,7 +124,7 @@ export class OfficeScene {
 
         // Desk edge trim
         const edgeMat = new THREE.MeshStandardMaterial({
-            color: 0x9a7b5a,
+            color: 0xdbe1e6, // Light grey edge trim
             roughness: 0.6,
         });
         const frontEdge = new THREE.Mesh(
@@ -268,13 +268,13 @@ export class OfficeScene {
     /* ── Cubicle Walls ─────────────────────────────────── */
     _createCubicleWalls() {
         const wallMat = new THREE.MeshStandardMaterial({
-            color: 0x8899a6,
+            color: 0xf1f3f5, // Bright modern cubicle walls
             roughness: 0.85,
         });
         const frameMat = new THREE.MeshStandardMaterial({
-            color: 0x667788,
-            roughness: 0.5,
-            metalness: 0.3,
+            color: 0xb2bac2, // Polished aluminum/chrome frame
+            roughness: 0.25,
+            metalness: 0.8,
         });
 
         // Left wall
@@ -336,36 +336,121 @@ export class OfficeScene {
 
     /* ── Hallway ───────────────────────────────────────── */
     _createHallway() {
-        const hallMat = new THREE.MeshStandardMaterial({
-            color: 0x9aa8b0,
+        const wallMat = new THREE.MeshStandardMaterial({
+            color: 0xf1f3f5,
             roughness: 0.9,
         });
 
-        // Hallway floor
+        // Hallway floor (matching carpet)
         const hallFloor = new THREE.Mesh(
             new THREE.PlaneGeometry(14, 4),
-            new THREE.MeshStandardMaterial({ color: 0x5a6a7a, roughness: 0.9 })
+            new THREE.MeshStandardMaterial({ color: 0xdde2e7, roughness: 0.85 })
         );
         hallFloor.rotation.x = -Math.PI / 2;
         hallFloor.position.set(0, 0.01, -4.5);
         this.group.add(hallFloor);
 
-        // Hallway back wall
-        const hallBack = new THREE.Mesh(
-            new THREE.BoxGeometry(14, 6, 0.15),
-            hallMat
-        );
-        hallBack.position.set(0, 3, -6.5);
-        this.group.add(hallBack);
-
         // Hallway ceiling
         const hallCeil = new THREE.Mesh(
             new THREE.PlaneGeometry(14, 4),
-            new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.95 })
+            new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.95 })
         );
         hallCeil.rotation.x = Math.PI / 2;
         hallCeil.position.set(0, 5.99, -4.5);
         this.group.add(hallCeil);
+
+        // ── CITY SKYLINE BACKGROUND ──────────────────────────
+        // Giant sky plane
+        const skyGeo = new THREE.PlaneGeometry(60, 40);
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0xa8c0ff }); // Sunny office-sky blue
+        const sky = new THREE.Mesh(skyGeo, skyMat);
+        sky.position.set(0, 10, -15.0);
+        this.group.add(sky);
+
+        // Low-poly office towers
+        const buildingMat1 = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.6 });
+        const buildingMat2 = new THREE.MeshStandardMaterial({ color: 0xe9ecef, roughness: 0.6 });
+        const buildingMat3 = new THREE.MeshStandardMaterial({ color: 0xdee2e6, roughness: 0.6 });
+        const windowMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.3 });
+
+        // Tower 1 (Left background)
+        const tower1 = new THREE.Mesh(new THREE.BoxGeometry(4.0, 16.0, 4.0), buildingMat2);
+        tower1.position.set(-6.5, 7.0, -13.5);
+        this.group.add(tower1);
+        for (let y = 1.0; y < 14.0; y += 2.0) {
+            const strip = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.4, 0.1), windowMat);
+            strip.position.set(-6.5, y, -11.4);
+            this.group.add(strip);
+        }
+
+        // Tower 2 (Center-right main tower)
+        const tower2 = new THREE.Mesh(new THREE.BoxGeometry(5.0, 22.0, 5.0), buildingMat1);
+        tower2.position.set(3.5, 9.0, -14.0);
+        this.group.add(tower2);
+        for (let y = 1.0; y < 19.0; y += 2.5) {
+            const strip = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.5, 0.1), windowMat);
+            strip.position.set(3.5, y, -11.4);
+            this.group.add(strip);
+        }
+
+        // Tower 3 (Center background, shorter)
+        const tower3 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 12.0, 3.0), buildingMat3);
+        tower3.position.set(-1.0, 5.0, -13.8);
+        this.group.add(tower3);
+        for (let y = 1.0; y < 10.0; y += 1.8) {
+            const strip = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.3, 0.1), windowMat);
+            strip.position.set(-1.0, y, -12.2);
+            this.group.add(strip);
+        }
+
+        // ── GLASS WINDOW WALL ─────────────────────────────────
+        // Lower sill
+        const sill = new THREE.Mesh(new THREE.BoxGeometry(14, 1.2, 0.2), wallMat);
+        sill.position.set(0, 0.6, -6.5);
+        this.group.add(sill);
+
+        // Upper header
+        const header = new THREE.Mesh(new THREE.BoxGeometry(14, 1.0, 0.2), wallMat);
+        header.position.set(0, 5.5, -6.5);
+        this.group.add(header);
+
+        // Side pillars
+        const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.2), wallMat);
+        pillarL.position.set(-6.85, 3.0, -6.5);
+        this.group.add(pillarL);
+
+        const pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.2), wallMat);
+        pillarR.position.set(6.85, 3.0, -6.5);
+        this.group.add(pillarR);
+
+        // Vertical Mullions (charcoal window dividers)
+        const mullionGeo = new THREE.BoxGeometry(0.08, 4.3, 0.12);
+        const mullionMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.5 });
+        const xPositions = [-4.5, -1.5, 1.5, 4.5];
+        for (const x of xPositions) {
+            const mullion = new THREE.Mesh(mullionGeo, mullionMat);
+            mullion.position.set(x, 3.15, -6.45);
+            this.group.add(mullion);
+        }
+
+        // Transom horizontal bar
+        const transomBar = new THREE.Mesh(new THREE.BoxGeometry(14, 0.08, 0.12), mullionMat);
+        transomBar.position.set(0, 3.15, -6.45);
+        this.group.add(transomBar);
+
+        // Semi-transparent window glass
+        const glassGeo = new THREE.PlaneGeometry(14, 4.3);
+        const glassMat = new THREE.MeshStandardMaterial({
+            color: 0x90caf9,
+            transparent: true,
+            opacity: 0.18,
+            roughness: 0.1,
+            metalness: 0.9,
+            side: THREE.DoubleSide
+        });
+        const glass = new THREE.Mesh(glassGeo, glassMat);
+        glass.position.set(0, 3.15, -6.42);
+        this.group.add(glass);
     }
 
     /* ── Small Office Props ────────────────────────────── */
