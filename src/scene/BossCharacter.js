@@ -206,83 +206,237 @@ export class BossCharacter {
         this.modelGroup.add(neck);
 
         /* ── HEAD ───────────────────────────────────────────────── */
-        // Slightly flattened on the sides – more angular, not perfectly round
+        // Angular head: NOT a sphere. Built from a box base + sphere blend
+        // so cheekbones and jaw read as flat planes, not a ball.
         this.head = new THREE.Group();
         this.head.position.set(0, 2.72, 0);
         this.modelGroup.add(this.head);
 
-        const headGeo = new THREE.SphereGeometry(0.28, 16, 14);
-        headGeo.scale(0.92, 1.05, 0.90);
-        const headMesh = new THREE.Mesh(headGeo, skinMat);
-        this.head.add(headMesh);
+        // Cranium – sphere strongly squashed on X and Z for a blocky skull
+        const craniumGeo = new THREE.SphereGeometry(0.275, 20, 16);
+        craniumGeo.scale(0.88, 1.0, 0.82);
+        const cranium = new THREE.Mesh(craniumGeo, skinMat);
+        cranium.position.y = 0.02;
+        this.head.add(cranium);
 
-        /* Hair – squared crew-cut look */
-        const hairTopGeo  = new THREE.BoxGeometry(0.50, 0.08, 0.46);
-        const hairSideGeo = new THREE.BoxGeometry(0.06, 0.26, 0.44);
-        const hairBack    = new THREE.BoxGeometry(0.50, 0.30, 0.06);
-
-        const hairTop = new THREE.Mesh(hairTopGeo, hairMat);
-        hairTop.position.set(0, 0.27, -0.02);
-        this.head.add(hairTop);
-
-        const hairSideL = new THREE.Mesh(hairSideGeo, hairMat);
-        hairSideL.position.set(-0.245, 0.14, -0.01);
-        this.head.add(hairSideL);
-
-        const hairSideR = new THREE.Mesh(hairSideGeo, hairMat);
-        hairSideR.position.set( 0.245, 0.14, -0.01);
-        this.head.add(hairSideR);
-
-        const hairBackMesh = new THREE.Mesh(hairBack, hairMat);
-        hairBackMesh.position.set(0, 0.12, -0.25);
-        this.head.add(hairBackMesh);
-
-        /* Eyes – whites + pupils */
-        const eyeballGeo = new THREE.SphereGeometry(0.055, 10, 8);
-        const pupilGeo   = new THREE.SphereGeometry(0.030, 8, 6);
-        const eyeOffsets = [-0.095, 0.095];
-        eyeOffsets.forEach(xOff => {
-            const eyeball = new THREE.Mesh(eyeballGeo, scleraMat);
-            eyeball.position.set(xOff, 0.04, 0.245);
-            this.head.add(eyeball);
-            const pupil = new THREE.Mesh(pupilGeo, eyeMat);
-            pupil.position.set(xOff, 0.04, 0.268);
-            this.head.add(pupil);
+        // Cheekbone blocks – two wide flat boxes that break the sphere silhouette
+        const cheekGeo = new THREE.BoxGeometry(0.18, 0.10, 0.10);
+        const cheekMat = new THREE.MeshStandardMaterial({ color: 0xeab880, roughness: 0.55 });
+        [-1, 1].forEach(side => {
+            const cheek = new THREE.Mesh(cheekGeo, cheekMat);
+            cheek.position.set(side * 0.215, -0.04, 0.165);
+            cheek.rotation.y = -side * 0.30;
+            this.head.add(cheek);
         });
 
-        /* Eyebrows – thin dark boxes, angled inward for a stern look */
-        const browGeo = new THREE.BoxGeometry(0.10, 0.018, 0.018);
-        const browL = new THREE.Mesh(browGeo, browMat);
-        browL.position.set(-0.095, 0.105, 0.248);
-        browL.rotation.z =  0.28;  // inner end lower = stern
-        this.head.add(browL);
+        // Jaw – a flattened box that gives a strong squared jaw line
+        const jawGeo = new THREE.BoxGeometry(0.40, 0.10, 0.26);
+        const jawMesh = new THREE.Mesh(jawGeo, skinMat);
+        jawMesh.position.set(0, -0.195, 0.03);
+        jawMesh.rotation.x = 0.12;  // tilt front down slightly
+        this.head.add(jawMesh);
 
-        const browR = new THREE.Mesh(browGeo, browMat);
-        browR.position.set( 0.095, 0.105, 0.248);
-        browR.rotation.z = -0.28;
-        this.head.add(browR);
-
-        /* Nose – a small elongated sphere */
-        const noseGeo = new THREE.SphereGeometry(0.032, 8, 6);
-        noseGeo.scale(0.8, 1.3, 1.1);
-        const nose = new THREE.Mesh(noseGeo, skinMat);
-        nose.position.set(0, -0.018, 0.272);
-        this.head.add(nose);
-
-        /* Mouth – thin dark slit, slightly downturned */
-        const mouthGeo = new THREE.BoxGeometry(0.085, 0.014, 0.012);
-        const mouthMat = new THREE.MeshStandardMaterial({ color: 0x5c2a20, roughness: 0.9 });
-        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
-        mouth.position.set(0, -0.092, 0.263);
-        this.head.add(mouth);
-
-        /* Chin shadow – slight darker sphere at chin */
-        const chinGeo = new THREE.SphereGeometry(0.06, 8, 6);
-        const chinMat = new THREE.MeshStandardMaterial({ color: 0xd4a870, roughness: 0.6 });
+        // Chin point – small wedge forward from the jaw
+        const chinGeo = new THREE.SphereGeometry(0.072, 10, 8);
+        const chinMat = new THREE.MeshStandardMaterial({ color: 0xe8b278, roughness: 0.55 });
         const chin = new THREE.Mesh(chinGeo, chinMat);
-        chin.scale.set(1.2, 0.5, 0.8);
-        chin.position.set(0, -0.20, 0.18);
+        chin.scale.set(0.80, 0.55, 0.90);
+        chin.position.set(0, -0.255, 0.195);
         this.head.add(chin);
+
+        // Forehead – slightly protruding shelf above the brow line
+        const foreheadGeo = new THREE.BoxGeometry(0.38, 0.08, 0.10);
+        const foreheadMesh = new THREE.Mesh(foreheadGeo, skinMat);
+        foreheadMesh.position.set(0, 0.155, 0.195);
+        foreheadMesh.rotation.x = -0.15;
+        this.head.add(foreheadMesh);
+
+        /* ── HAIR ───────────────────────────────────────────────── */
+        // Hard-parted slick-back: flat top slab + swept-back taper + side walls
+        // Top slab – sits perfectly flat, covers the crown
+        const hairTopGeo = new THREE.BoxGeometry(0.46, 0.055, 0.42);
+        const hairTop = new THREE.Mesh(hairTopGeo, hairMat);
+        hairTop.position.set(0, 0.285, -0.025);
+        this.head.add(hairTop);
+
+        // Front hairline ridge – a thin wedge that creates a distinct hairline
+        const hairFrontGeo = new THREE.BoxGeometry(0.44, 0.072, 0.05);
+        const hairFront = new THREE.Mesh(hairFrontGeo, hairMat);
+        hairFront.position.set(0, 0.248, 0.185);
+        hairFront.rotation.x = 0.35;  // angled forward over the forehead
+        this.head.add(hairFront);
+
+        // Side panels – close-cropped against the skull
+        const hairSideGeo = new THREE.BoxGeometry(0.048, 0.22, 0.40);
+        [-1, 1].forEach(side => {
+            const hairSide = new THREE.Mesh(hairSideGeo, hairMat);
+            hairSide.position.set(side * 0.238, 0.155, -0.015);
+            this.head.add(hairSide);
+        });
+
+        // Back – covers the occipital slope cleanly
+        const hairBackGeo = new THREE.BoxGeometry(0.44, 0.28, 0.052);
+        const hairBack = new THREE.Mesh(hairBackGeo, hairMat);
+        hairBack.position.set(0, 0.12, -0.248);
+        this.head.add(hairBack);
+
+        // Hard part line – a very thin bright strip on the left side
+        const partMat = new THREE.MeshStandardMaterial({ color: 0xd4a06a, roughness: 0.6 });
+        const partGeo = new THREE.BoxGeometry(0.010, 0.008, 0.30);
+        const partLine = new THREE.Mesh(partGeo, partMat);
+        partLine.position.set(-0.06, 0.292, 0.04);
+        this.head.add(partLine);
+
+        /* ── EYES ───────────────────────────────────────────────── */
+        // Eye socket recess – slightly darker ellipse behind each eye
+        const socketMat = new THREE.MeshStandardMaterial({ color: 0xc8935a, roughness: 0.7 });
+        const socketGeo = new THREE.SphereGeometry(0.068, 10, 8);
+        socketGeo.scale(1.1, 0.75, 0.4);
+
+        // Upper eyelid shelf – a thin box that creates a lid crease above each eye
+        const lidMat  = new THREE.MeshStandardMaterial({ color: 0xd8a06a, roughness: 0.6 });
+        const lidGeo  = new THREE.BoxGeometry(0.115, 0.022, 0.028);
+
+        // Lower lid – subtle ridge below the eye
+        const llidGeo = new THREE.BoxGeometry(0.108, 0.014, 0.020);
+
+        const eyeXPositions = [-0.098, 0.098];
+        eyeXPositions.forEach(xOff => {
+            // Socket shadow
+            const socket = new THREE.Mesh(socketGeo, socketMat);
+            socket.position.set(xOff, 0.042, 0.228);
+            this.head.add(socket);
+
+            // Eyeball (white sclera)
+            const eyeballGeo = new THREE.SphereGeometry(0.052, 14, 10);
+            const eyeball = new THREE.Mesh(eyeballGeo, scleraMat);
+            eyeball.position.set(xOff, 0.042, 0.242);
+            this.head.add(eyeball);
+
+            // Iris – flat disc sitting on the eyeball surface
+            const irisGeo = new THREE.CylinderGeometry(0.030, 0.030, 0.008, 14);
+            const irisMat = new THREE.MeshStandardMaterial({ color: 0x2a1a08, roughness: 0.3, metalness: 0.05 });
+            const iris = new THREE.Mesh(irisGeo, irisMat);
+            iris.rotation.x = Math.PI / 2;
+            iris.position.set(xOff, 0.042, 0.265);
+            this.head.add(iris);
+
+            // Pupil – smaller darker disc on iris
+            const pupilGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.009, 12);
+            const pupil = new THREE.Mesh(pupilGeo, eyeMat);
+            pupil.rotation.x = Math.PI / 2;
+            pupil.position.set(xOff, 0.042, 0.269);
+            this.head.add(pupil);
+
+            // Upper eyelid
+            const lid = new THREE.Mesh(lidGeo, lidMat);
+            lid.position.set(xOff, 0.076, 0.253);
+            lid.rotation.x = -0.20;
+            this.head.add(lid);
+
+            // Lower eyelid
+            const llid = new THREE.Mesh(llidGeo, lidMat);
+            llid.position.set(xOff, 0.012, 0.254);
+            llid.rotation.x = 0.15;
+            this.head.add(llid);
+        });
+
+        /* ── EYEBROWS ───────────────────────────────────────────── */
+        // Thick, heavy brows – two segments each (inner + outer) for a V-shape scowl
+        const browThickMat = new THREE.MeshStandardMaterial({ color: 0x0e0804, roughness: 0.95 });
+
+        // Left brow – inner segment drops sharply toward nose bridge
+        const browInnerGeo = new THREE.BoxGeometry(0.055, 0.024, 0.026);
+        const browInnerL = new THREE.Mesh(browInnerGeo, browThickMat);
+        browInnerL.position.set(-0.068, 0.118, 0.252);
+        browInnerL.rotation.z =  0.50;   // steep downward pitch inward
+        this.head.add(browInnerL);
+
+        const browInnerR = new THREE.Mesh(browInnerGeo, browThickMat);
+        browInnerR.position.set( 0.068, 0.118, 0.252);
+        browInnerR.rotation.z = -0.50;
+        this.head.add(browInnerR);
+
+        // Left brow – outer segment (flatter, horizontal)
+        const browOuterGeo = new THREE.BoxGeometry(0.068, 0.020, 0.022);
+        const browOuterL = new THREE.Mesh(browOuterGeo, browThickMat);
+        browOuterL.position.set(-0.130, 0.102, 0.248);
+        browOuterL.rotation.z =  0.10;
+        this.head.add(browOuterL);
+
+        const browOuterR = new THREE.Mesh(browOuterGeo, browThickMat);
+        browOuterR.position.set( 0.130, 0.102, 0.248);
+        browOuterR.rotation.z = -0.10;
+        this.head.add(browOuterR);
+
+        // Glabella – the knot between the brows (furrowed look)
+        const glabellaGeo = new THREE.BoxGeometry(0.028, 0.032, 0.020);
+        const glabella = new THREE.Mesh(glabellaGeo, browThickMat);
+        glabella.position.set(0, 0.102, 0.255);
+        this.head.add(glabella);
+
+        /* ── NOSE ───────────────────────────────────────────────── */
+        // Nose bridge – a narrow ridge from brow to tip
+        const bridgeGeo = new THREE.BoxGeometry(0.038, 0.120, 0.035);
+        const bridgeMat = new THREE.MeshStandardMaterial({ color: 0xe8aa72, roughness: 0.55 });
+        const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
+        bridge.position.set(0, 0.010, 0.265);
+        bridge.rotation.x = 0.08;
+        this.head.add(bridge);
+
+        // Nose tip – slightly bulbous sphere
+        const tipGeo = new THREE.SphereGeometry(0.036, 10, 8);
+        tipGeo.scale(1.05, 0.78, 1.10);
+        const tipMat = new THREE.MeshStandardMaterial({ color: 0xe0a268, roughness: 0.55 });
+        const tip = new THREE.Mesh(tipGeo, tipMat);
+        tip.position.set(0, -0.060, 0.278);
+        this.head.add(tip);
+
+        // Nostrils – two small dark ellipsoids flanking the tip
+        const nostrilGeo = new THREE.SphereGeometry(0.018, 8, 6);
+        nostrilGeo.scale(0.75, 0.55, 1.0);
+        const nostrilMat = new THREE.MeshStandardMaterial({ color: 0x9a5c38, roughness: 0.8 });
+        [-0.032, 0.032].forEach(xOff => {
+            const nostril = new THREE.Mesh(nostrilGeo, nostrilMat);
+            nostril.position.set(xOff, -0.074, 0.272);
+            this.head.add(nostril);
+        });
+
+        /* ── MOUTH ──────────────────────────────────────────────── */
+        const mouthMat = new THREE.MeshStandardMaterial({ color: 0x5a1e14, roughness: 0.9 });
+
+        // Upper lip – thin wedge, slightly proud of face
+        const upperLipGeo = new THREE.BoxGeometry(0.092, 0.020, 0.028);
+        const upperLip = new THREE.Mesh(upperLipGeo, mouthMat);
+        upperLip.position.set(0, -0.118, 0.258);
+        upperLip.rotation.x = -0.10;
+        this.head.add(upperLip);
+
+        // Lower lip – slightly thicker and further out
+        const lowerLipGeo = new THREE.BoxGeometry(0.082, 0.022, 0.030);
+        const lowerLipMat = new THREE.MeshStandardMaterial({ color: 0xc06048, roughness: 0.7 });
+        const lowerLip = new THREE.Mesh(lowerLipGeo, lowerLipMat);
+        lowerLip.position.set(0, -0.144, 0.255);
+        this.head.add(lowerLip);
+
+        // Mouth corners – tiny dark spheres to define the mouth line ends
+        const cornerGeo = new THREE.SphereGeometry(0.012, 6, 5);
+        const cornerMat = new THREE.MeshStandardMaterial({ color: 0x4a1810, roughness: 0.9 });
+        [-0.047, 0.047].forEach(xOff => {
+            const corner = new THREE.Mesh(cornerGeo, cornerMat);
+            corner.position.set(xOff, -0.128, 0.252);
+            this.head.add(corner);
+        });
+
+        // Nasolabial fold line – subtle ridge from nose wing to mouth corner
+        const foldGeo = new THREE.BoxGeometry(0.010, 0.052, 0.010);
+        const foldMat = new THREE.MeshStandardMaterial({ color: 0xc8885a, roughness: 0.7 });
+        [-0.072, 0.072].forEach(xOff => {
+            const fold = new THREE.Mesh(foldGeo, foldMat);
+            fold.position.set(xOff, -0.092, 0.252);
+            fold.rotation.z = xOff < 0 ? 0.18 : -0.18;
+            this.head.add(fold);
+        });
 
         /* ── LIGHTING ───────────────────────────────────────────── */
         // Warm key light to illuminate the face from slightly above/front
