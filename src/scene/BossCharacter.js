@@ -318,30 +318,41 @@ export class BossCharacter {
         this.head.add(templeR);
 
         /* ── HAIR ───────────────────────────────────────────────── */
-        // Slicked-back corporate hair
+        // Slicked-back clean corporate hairstyle with elegant volume
         // Main dome covering the back/top of the skull
-        const hairDomeGeo = new THREE.SphereGeometry(0.285, 24, 20, 0, Math.PI * 2, 0, Math.PI * 0.58);
-        hairDomeGeo.scale(0.96, 1.05, 1.05); // covers the head perfectly
+        const hairDomeGeo = new THREE.SphereGeometry(0.285, 24, 24);
+        hairDomeGeo.scale(1.02, 1.06, 1.08); // covers the head perfectly
         const hairDome = new THREE.Mesh(hairDomeGeo, hairMat);
-        hairDome.position.set(0, 0.04, -0.04);
-        hairDome.rotation.x = 0.22; // swept back
+        hairDome.position.set(0, 0.04, -0.06);
+        hairDome.rotation.x = 0.15; // swept back
         this.head.add(hairDome);
 
-        // Swept-back top volume (quiff)
-        const hairTopGeo = new THREE.BoxGeometry(0.38, 0.12, 0.38);
-        const hairTop = new THREE.Mesh(hairTopGeo, hairMat);
-        hairTop.position.set(0, 0.24, -0.06);
-        hairTop.rotation.x = 0.1;
-        this.head.add(hairTop);
+        // Front hair volumizer (quiff/pomp) for a stylish, high-society corporate height
+        const quiffGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        quiffGeo.scale(1.2, 0.8, 1.4);
+        const quiff = new THREE.Mesh(quiffGeo, hairMat);
+        quiff.position.set(0, 0.24, 0.06);
+        quiff.rotation.x = 0.1;
+        this.head.add(quiff);
 
-        // Sideburns
-        const sideburnGeo = new THREE.BoxGeometry(0.03, 0.18, 0.15);
+        // Back flow lock to blend the quiff down the back of the head
+        const lockGeo = new THREE.SphereGeometry(0.12, 16, 16);
+        lockGeo.scale(0.8, 0.6, 2.0);
+        const lock = new THREE.Mesh(lockGeo, hairMat);
+        lock.position.set(0, 0.22, -0.08);
+        lock.rotation.x = -0.05;
+        this.head.add(lock);
+
+        // Sideburns - flat curved spheres that blend naturally with the hair dome
+        const sideburnGeo = new THREE.SphereGeometry(0.08, 12, 12);
+        sideburnGeo.scale(0.4, 1.8, 1.2);
+        
         const sideburnL = new THREE.Mesh(sideburnGeo, hairMat);
-        sideburnL.position.set(-0.25, 0.08, 0.02);
+        sideburnL.position.set(-0.25, 0.02, 0.0);
         this.head.add(sideburnL);
 
         const sideburnR = new THREE.Mesh(sideburnGeo, hairMat);
-        sideburnR.position.set(0.25, 0.08, 0.02);
+        sideburnR.position.set(0.25, 0.02, 0.0);
         this.head.add(sideburnR);
 
         /* ── LIGHTING ───────────────────────────────────────────── */
