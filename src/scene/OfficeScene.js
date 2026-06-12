@@ -549,21 +549,21 @@ export class OfficeScene {
 
     _createCityscape() {
         // ── 1. Sky Backdrop ──────────────────────────────────
-        // A huge blue sky plane placed far to the left to span the full window view
-        const skyGeo = new THREE.PlaneGeometry(120, 80);
-        const skyMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, fog: false });
+        // A massive blue sky plane placed far to the left to span the full window view, with DoubleSide to ensure visibility
+        const skyGeo = new THREE.PlaneGeometry(300, 150);
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, fog: false, side: THREE.DoubleSide });
         const sky = new THREE.Mesh(skyGeo, skyMat);
-        sky.position.set(-48.0, 15.0, -5.0);
+        sky.position.set(-48.0, 15.0, -25.0);
         sky.rotation.y = Math.PI / 2;
         this.group.add(sky);
 
-        // ── 2. Distant Skyscraper Buildings (Self-illuminated for high visibility) ───────────────────
+        // ── 2. Distant Skyscraper Buildings (Self-illuminated for high visibility, clustered in player's FOV) ───────────────────
         const skyscrapers = [
-            { x: -28, z: -16, w: 4, h: 36, d: 4, color: 0xbae6fd }, // Crisp light cyan tower
-            { x: -36, z: -6,  w: 6, h: 48, d: 6, color: 0xf1f5f9 }, // Sleek white/silver tower
-            { x: -25, z: 2,   w: 3.5, h: 28, d: 3.5, color: 0x93c5fd }, // Bright blue tower
-            { x: -32, z: 12,  w: 5, h: 42, d: 5, color: 0xcbd5e1 }, // Modern gray-metal tower
-            { x: -38, z: -24, w: 8, h: 22, d: 8, color: 0x64748b }  // Medium slate tower
+            { x: -24, z: -28, w: 4.5, h: 42, d: 4.5, color: 0xf1f5f9 }, // Sleek white/silver tower (central view)
+            { x: -28, z: -36, w: 5,   h: 36, d: 5,   color: 0xbae6fd }, // Crisp light cyan tower
+            { x: -22, z: -20, w: 3.5, h: 28, d: 3.5, color: 0x93c5fd }, // Bright blue tower (left side)
+            { x: -32, z: -44, w: 5,   h: 48, d: 5,   color: 0xcbd5e1 }, // Modern gray-metal tower
+            { x: -26, z: -15, w: 4,   h: 24, d: 4,   color: 0xfde047 }  // Warm golden tower reflecting the sun
         ];
 
         skyscrapers.forEach(s => {
@@ -596,12 +596,12 @@ export class OfficeScene {
             this.group.add(towerGroup);
         });
 
-        // ── 3. Distant Clouds ─────────────────────────────────
+        // ── 3. Distant Clouds (Clustered in player's direct line of sight) ─────────────────
         const cloudPositions = [
-            [-30, 15, -18],
-            [-31, 20, -6],
-            [-29, 18, 4],
-            [-32, 14, 12]
+            [-30, 18, -25],
+            [-32, 22, -15],
+            [-28, 16, -35],
+            [-34, 14, -8]
         ];
 
         cloudPositions.forEach(([cx, cy, cz]) => {
