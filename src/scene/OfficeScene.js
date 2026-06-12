@@ -307,10 +307,10 @@ export class OfficeScene {
 
         // Left wall
         const leftWall = new THREE.Mesh(
-            new THREE.BoxGeometry(0.06, 2.0, 3.0),
+            new THREE.BoxGeometry(0.06, 1.2, 3.0),
             wallMat
         );
-        leftWall.position.set(-1.8, 1.0, -1.0);
+        leftWall.position.set(-1.8, 0.6, -1.0);
         this.group.add(leftWall);
 
         // Left wall top trim
@@ -318,48 +318,40 @@ export class OfficeScene {
             new THREE.BoxGeometry(0.08, 0.04, 3.0),
             frameMat
         );
-        leftTrim.position.set(-1.8, 2.0, -1.0);
+        leftTrim.position.set(-1.8, 1.2, -1.0);
         this.group.add(leftTrim);
 
         // Right wall
         const rightWall = new THREE.Mesh(
-            new THREE.BoxGeometry(0.06, 2.0, 3.0),
+            new THREE.BoxGeometry(0.06, 1.2, 3.0),
             wallMat
         );
-        rightWall.position.set(1.8, 1.0, -1.0);
+        rightWall.position.set(1.8, 0.6, -1.0);
         this.group.add(rightWall);
 
         const rightTrim = new THREE.Mesh(
             new THREE.BoxGeometry(0.08, 0.04, 3.0),
             frameMat
         );
-        rightTrim.position.set(1.8, 2.0, -1.0);
+        rightTrim.position.set(1.8, 1.2, -1.0);
         this.group.add(rightTrim);
 
         // Back wall (with gap for hallway view)
         // Left section
         const backLeft = new THREE.Mesh(
-            new THREE.BoxGeometry(1.2, 2.0, 0.06),
+            new THREE.BoxGeometry(1.2, 1.2, 0.06),
             wallMat
         );
-        backLeft.position.set(-1.2, 1.0, -2.5);
+        backLeft.position.set(-1.2, 0.6, -2.5);
         this.group.add(backLeft);
 
         // Right section
         const backRight = new THREE.Mesh(
-            new THREE.BoxGeometry(1.2, 2.0, 0.06),
+            new THREE.BoxGeometry(1.2, 1.2, 0.06),
             wallMat
         );
-        backRight.position.set(1.2, 1.0, -2.5);
+        backRight.position.set(1.2, 0.6, -2.5);
         this.group.add(backRight);
-
-        // Upper transom (above the gap)
-        const transom = new THREE.Mesh(
-            new THREE.BoxGeometry(1.4, 0.5, 0.06),
-            wallMat
-        );
-        transom.position.set(0, 2.25, -2.5);
-        this.group.add(transom);
     }
 
     /* ── Hallway / Background Office Floor ──────────────── */
@@ -379,10 +371,50 @@ export class OfficeScene {
         backWall.position.set(0, 3.0, -20.0);
         this.group.add(backWall);
 
-        // Left Wall
-        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 6.0, 30.0), wallMat);
-        leftWall.position.set(-12.0, 3.0, -5.0);
-        this.group.add(leftWall);
+        // ── Left Glass Curtain Wall ──────────────────────────
+        // Frame Material for windows
+        const glassFrameMat = new THREE.MeshStandardMaterial({
+            color: 0xd1d7dd,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+
+        // Bottom sill
+        const sill = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 30.0), glassFrameMat);
+        sill.position.set(-12.0, 0.2, -5.0);
+        this.group.add(sill);
+
+        // Top head
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 30.0), glassFrameMat);
+        head.position.set(-12.0, 5.8, -5.0);
+        this.group.add(head);
+
+        // Horizontal mid-rails (at height y = 2.8)
+        const midRail = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 30.0), glassFrameMat);
+        midRail.position.set(-12.0, 2.8, -5.0);
+        this.group.add(midRail);
+
+        // Vertical window mullions (spaced every 5 units from z = -20 to z = 10)
+        for (let mz = -20.0; mz <= 10.0; mz += 5.0) {
+            const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.16, 5.4, 0.16), glassFrameMat);
+            mullion.position.set(-12.0, 3.0, mz);
+            this.group.add(mullion);
+        }
+
+        // Semi-transparent blue-sky-tinted glass panes
+        const glassMat = new THREE.MeshStandardMaterial({
+            color: 0xbae6fd, // Sky tinted glass
+            transparent: true,
+            opacity: 0.2,
+            roughness: 0.1,
+            metalness: 0.9
+        });
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(0.02, 5.4, 30.0), glassMat);
+        glass.position.set(-12.0, 3.0, -5.0);
+        this.group.add(glass);
+
+        // Outside cityscape scenery (buildings and clouds)
+        this._createCityscape();
 
         // Right Wall
         const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, 6.0, 30.0), wallMat);
@@ -393,10 +425,6 @@ export class OfficeScene {
         const bbBack = new THREE.Mesh(new THREE.BoxGeometry(24, 0.15, 0.18), trimMat);
         bbBack.position.set(0, 0.075, -19.9);
         this.group.add(bbBack);
-
-        const bbLeft = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 30.0), trimMat);
-        bbLeft.position.set(-11.9, 0.075, -5.0);
-        this.group.add(bbLeft);
 
         const bbRight = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 30.0), trimMat);
         bbRight.position.set(11.9, 0.075, -5.0);
@@ -476,79 +504,168 @@ export class OfficeScene {
         this._createPlant(-6.5, 0, -10.0);
         this._createPlant(6.5, 0, -10.0);
 
-        // Agile Scrum whiteboard board on the right wall
-        this._createAgileBoard();
+        // Meeting Hub area on the right wall (Agile Scrum Board & Collaborative Furniture)
+        this._createMeetingHub();
     }
 
-    _createAgileBoard() {
-        const boardX = 1.76; // Mounted inside the player's right cubicle partition wall (x = 1.8)
-        const boardY = 1.35; // Eye level
-        const boardZ = -1.0; // Spanning along the depth of the desk
+    _createCityscape() {
+        // ── 1. Sky Backdrop ──────────────────────────────────
+        // A huge blue sky plane placed far to the left
+        const skyGeo = new THREE.PlaneGeometry(60, 40);
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
+        const sky = new THREE.Mesh(skyGeo, skyMat);
+        sky.position.set(-35.0, 15.0, -5.0);
+        sky.rotation.y = Math.PI / 2;
+        this.group.add(sky);
+
+        // ── 2. Distant Skyscraper Buildings ───────────────────
+        const skyscrapers = [
+            { x: -28, z: -16, w: 4, h: 22, d: 4, color: 0x94a3b8 },
+            { x: -32, z: -8,  w: 6, h: 32, d: 6, color: 0x64748b },
+            { x: -26, z: 0,   w: 3.5, h: 18, d: 3.5, color: 0xe2e8f0 },
+            { x: -30, z: 8,   w: 5, h: 26, d: 5, color: 0x475569 },
+            { x: -34, z: -24, w: 8, h: 15, d: 8, color: 0xcad4e0 }
+        ];
+
+        skyscrapers.forEach(s => {
+            const towerGroup = new THREE.Group();
+            towerGroup.position.set(s.x, s.h / 2 - 2, s.z);
+
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: s.color,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(s.w, s.h, s.d), bodyMat);
+            towerGroup.add(body);
+
+            const windowMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.65
+            });
+            const numBands = Math.floor(s.h / 1.4);
+            for (let i = 1; i < numBands; i++) {
+                const bandY = -s.h / 2 + i * 1.4;
+                const winBand = new THREE.Mesh(
+                    new THREE.BoxGeometry(s.w + 0.04, 0.45, s.d + 0.04),
+                    windowMat
+                );
+                winBand.position.y = bandY;
+                towerGroup.add(winBand);
+            }
+
+            this.group.add(towerGroup);
+        });
+
+        // ── 3. Distant Clouds ─────────────────────────────────
+        const cloudPositions = [
+            [-30, 12, -18],
+            [-31, 16, -6],
+            [-29, 14, 4],
+            [-32, 10, 12]
+        ];
+
+        cloudPositions.forEach(([cx, cy, cz]) => {
+            const cloudGroup = new THREE.Group();
+            cloudGroup.position.set(cx, cy, cz);
+            const cloudMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            const sphereParams = [
+                { r: 1.0, x: 0, y: 0, z: 0 },
+                { r: 0.8, x: -0.8, y: -0.2, z: 0.4 },
+                { r: 0.7, x: 0.7, y: -0.1, z: -0.3 },
+                { r: 0.6, x: -0.4, y: 0.4, z: -0.2 },
+                { r: 0.5, x: 0.4, y: 0.3, z: 0.3 }
+            ];
+
+            sphereParams.forEach(p => {
+                const sphereGeo = new THREE.SphereGeometry(p.r, 8, 8);
+                const sphere = new THREE.Mesh(sphereGeo, cloudMat);
+                sphere.position.set(p.x, p.y, p.z);
+                cloudGroup.add(sphere);
+            });
+
+            this.group.add(cloudGroup);
+        });
+    }
+
+    _createMeetingHub() {
+        // ── 1. Giant Agile Board on the Outer Right Wall ──────
+        const boardX = 11.88; // Mounted right inside the right wall (x = 12)
+        const boardY = 2.8;
+        const boardZ = -7.0;
 
         // Board Frame (polished light aluminum trim)
         const frameMat = new THREE.MeshStandardMaterial({ color: 0xd1d7dd, metalness: 0.8, roughness: 0.2 });
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.0, 1.6), frameMat);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.4, 4.8), frameMat);
         frame.position.set(boardX, boardY, boardZ);
         this.group.add(frame);
 
-        // Whiteboard sheet (facing towards player: -X)
+        // Whiteboard sheet (facing towards center of room: -X)
         const sheetMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const sheet = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.92, 1.52), sheetMat);
+        const sheet = new THREE.Mesh(new THREE.BoxGeometry(0.02, 2.2, 4.6), sheetMat);
         sheet.position.set(boardX - 0.012, boardY, boardZ);
         this.group.add(sheet);
 
-        // Title at the top: "SCRUM BOARD" (represented by dark marker dashes)
+        // Title: "AGILE SCRUM ROADMAP" (represented by dark marker dashes)
         const titleMat = new THREE.MeshBasicMaterial({ color: 0x0f172a }); // Black marker
-        const titleLine1 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.03, 0.25), titleMat);
-        titleLine1.position.set(boardX - 0.025, boardY + 0.38, boardZ - 0.15);
-        this.group.add(titleLine1);
-        
-        const titleLine2 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.03, 0.2), titleMat);
-        titleLine2.position.set(boardX - 0.025, boardY + 0.38, boardZ + 0.1);
-        this.group.add(titleLine2);
+        const title1 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.05, 0.8), titleMat);
+        title1.position.set(boardX - 0.025, boardY + 0.9, boardZ - 0.5);
+        this.group.add(title1);
+
+        const title2 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.05, 0.6), titleMat);
+        title2.position.set(boardX - 0.025, boardY + 0.9, boardZ + 0.5);
+        this.group.add(title2);
 
         // Scrum columns dividers (2 vertical grid lines)
         const gridMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8 });
-        const col1 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.6, 0.01), gridMat);
-        col1.position.set(boardX - 0.025, boardY - 0.05, boardZ - 0.25);
+        const col1 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 1.4, 0.02), gridMat);
+        col1.position.set(boardX - 0.025, boardY - 0.1, boardZ - 0.85);
         this.group.add(col1);
 
-        const col2 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.6, 0.01), gridMat);
-        col2.position.set(boardX - 0.025, boardY - 0.05, boardZ + 0.25);
+        const col2 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 1.4, 0.02), gridMat);
+        col2.position.set(boardX - 0.025, boardY - 0.1, boardZ + 0.85);
         this.group.add(col2);
 
-        // Column Labels (represented by small hand-drawn looking colored marker dashes)
+        // Column Labels (represented by hand-drawn looking colored marker dashes)
         const labelMat = new THREE.MeshBasicMaterial({ color: 0x2563eb }); // Blue marker
         // "To Do" label
-        const todoLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.02, 0.12), labelMat);
-        todoLbl.position.set(boardX - 0.025, boardY + 0.28, boardZ - 0.5);
+        const todoLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.04, 0.35), labelMat);
+        todoLbl.position.set(boardX - 0.025, boardY + 0.68, boardZ - 1.5);
         this.group.add(todoLbl);
 
         // "In Progress" label
-        const inProgLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.02, 0.18), labelMat);
-        inProgLbl.position.set(boardX - 0.025, boardY + 0.28, boardZ);
+        const inProgLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.04, 0.45), labelMat);
+        inProgLbl.position.set(boardX - 0.025, boardY + 0.68, boardZ);
         this.group.add(inProgLbl);
 
         // "Done" label
-        const doneLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.02, 0.1), labelMat);
-        doneLbl.position.set(boardX - 0.025, boardY + 0.28, boardZ + 0.5);
+        const doneLbl = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.04, 0.3), labelMat);
+        doneLbl.position.set(boardX - 0.025, boardY + 0.68, boardZ + 1.5);
         this.group.add(doneLbl);
 
-        // Sticky notes (representing agile backlog tasks in To Do, In Progress, Done)
+        // Sticky notes (backlog tasks in To Do, In Progress, Done)
         const notes = [
-            // To Do column
-            { z: -0.55, y: 0.15, color: 0xfef08a }, // Yellow
-            { z: -0.42, y: 0.02, color: 0xfecdd3 }, // Pink
-            { z: -0.52, y: -0.12, color: 0xbae6fd }, // Blue
+            // To Do column (left)
+            { z: -1.6, y: 0.35, color: 0xfef08a },
+            { z: -1.3, y: 0.1, color: 0xfecdd3 },
+            { z: -1.5, y: -0.2, color: 0xbae6fd },
+            { z: -1.2, y: -0.45, color: 0xfef08a },
 
-            // In Progress column
-            { z: -0.08, y: 0.12, color: 0xbbf7d0 }, // Green
-            { z: 0.08, y: -0.02, color: 0xfef08a }, // Yellow
+            // In Progress column (center)
+            { z: -0.3, y: 0.3, color: 0xbbf7d0 },
+            { z: 0.2, y: 0.05, color: 0xfef08a },
+            { z: -0.1, y: -0.3, color: 0xbae6fd },
 
-            // Done column
-            { z: 0.42, y: 0.18, color: 0xbae6fd }, // Blue
-            { z: 0.52, y: 0.05, color: 0xbbf7d0 }, // Green
-            { z: 0.4, y: -0.1, color: 0xfecdd3 } // Pink
+            // Done column (right)
+            { z: 1.3, y: 0.4, color: 0xbae6fd },
+            { z: 1.6, y: 0.15, color: 0xbbf7d0 },
+            { z: 1.2, y: -0.25, color: 0xfecdd3 }
         ];
 
         notes.forEach(note => {
@@ -556,28 +673,83 @@ export class OfficeScene {
                 color: note.color,
                 roughness: 0.6
             });
-            const noteMesh = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.09, 0.11), noteMat);
-            // Angle the note slightly to look realistically hand-placed (not perfectly straight)
+            const noteMesh = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.22, 0.28), noteMat);
             noteMesh.rotation.x = (Math.random() - 0.5) * 0.18;
             noteMesh.position.set(boardX - 0.025, boardY + note.y, boardZ + note.z);
             this.group.add(noteMesh);
         });
 
-        // Hand-drawn notes/manifesto on the lower whiteboard section
+        // Handwritten notes/manifesto on the lower whiteboard section
         const redMarker = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
-        const manifestoTitle = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.015, 0.15), redMarker);
-        manifestoTitle.position.set(boardX - 0.025, boardY - 0.22, boardZ - 0.45);
+        const manifestoTitle = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.03, 0.4), redMarker);
+        manifestoTitle.position.set(boardX - 0.025, boardY - 0.5, boardZ - 1.4);
         this.group.add(manifestoTitle);
 
-        // Hand-written text bullet points (simple dark scribbled lines)
-        for (let i = 0; i < 3; i++) {
-            const scribbleLine = new THREE.Mesh(
-                new THREE.BoxGeometry(0.005, 0.008, 0.2 + Math.random() * 0.08),
+        // Hand-written text lines (scribbles)
+        for (let i = 0; i < 4; i++) {
+            const scribble = new THREE.Mesh(
+                new THREE.BoxGeometry(0.005, 0.015, 0.6 + Math.random() * 0.2),
                 new THREE.MeshBasicMaterial({ color: 0x1e293b })
             );
-            scribbleLine.position.set(boardX - 0.025, boardY - 0.28 - i * 0.05, boardZ - 0.4);
-            this.group.add(scribbleLine);
+            scribble.position.set(boardX - 0.025, boardY - 0.64 - i * 0.12, boardZ - 1.2);
+            this.group.add(scribble);
         }
+
+        // ── 2. Collaborative High-Top Table ───────────────────
+        const tableX = 8.5;
+        const tableY = 0.95;
+        const tableZ = -7.0;
+
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0xddc4b0, roughness: 0.4 }); // Light birch wood table top
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.8 }); // Steel legs
+
+        // Table Top
+        const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 2.6), woodMat);
+        tableTop.position.set(tableX, tableY, tableZ);
+        this.group.add(tableTop);
+
+        // Legs (4 steel columns)
+        const legD = 0.08;
+        const legOffsets = [
+            [-0.5, -1.1],
+            [-0.5, 1.1],
+            [0.5, -1.1],
+            [0.5, 1.1]
+        ];
+        legOffsets.forEach(([ox, oz]) => {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(legD, tableY, legD), legMat);
+            leg.position.set(tableX + ox, tableY / 2, tableZ + oz);
+            this.group.add(leg);
+        });
+
+        // ── 3. High-top Stools (Meeting Chairs) ────────────────
+        const stoolSeatMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 }); // Slate seat pad
+        const stoolLegMat = new THREE.MeshStandardMaterial({ color: 0xdbe1e8, roughness: 0.3, metalness: 0.8 }); // Metal legs
+
+        const stoolPositions = [
+            [tableX - 0.9, tableZ - 0.6],
+            [tableX - 0.9, tableZ + 0.6],
+            [tableX + 0.9, tableZ - 0.6],
+            [tableX + 0.9, tableZ + 0.6]
+        ];
+
+        stoolPositions.forEach(([sx, sz]) => {
+            // Seat
+            const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 12), stoolSeatMat);
+            seat.position.set(sx, 0.65, sz);
+            this.group.add(seat);
+
+            // Stool post/base
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 8), stoolLegMat);
+            post.position.set(sx, 0.3, sz);
+            this.group.add(post);
+
+            // Ring footrest
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 6, 16), stoolLegMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.set(sx, 0.2, sz);
+            this.group.add(ring);
+        });
     }
 
     /* ── Small Office Props ────────────────────────────── */
