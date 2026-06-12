@@ -360,11 +360,11 @@ export class OfficeScene {
         this.group.add(hallCeil);
 
         // ── CITY SKYLINE BACKGROUND ──────────────────────────
-        // Giant sky plane
-        const skyGeo = new THREE.PlaneGeometry(60, 40);
-        const skyMat = new THREE.MeshBasicMaterial({ color: 0xa8c0ff }); // Sunny office-sky blue
+        // Giant sky plane - unaffected by fog so it remains bright and crisp
+        const skyGeo = new THREE.PlaneGeometry(80, 50);
+        const skyMat = new THREE.MeshBasicMaterial({ color: 0xa8c0ff, fog: false }); // Sunny office-sky blue
         const sky = new THREE.Mesh(skyGeo, skyMat);
-        sky.position.set(0, 10, -15.0);
+        sky.position.set(0, 10, -22.0);
         this.group.add(sky);
 
         // Low-poly office towers
