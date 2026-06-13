@@ -1281,48 +1281,54 @@ export class OfficeScene {
         torso.position.set(0, 0.38, 0);
         group.add(torso);
 
-        // Head
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), skinMat);
+        // Head Group (parent of all head & face parts for correct rotation inheritance)
+        const head = new THREE.Group();
         head.position.set(0, 0.70, 0);
         group.add(head);
 
-        // Hair (styled modern boxy cut)
-        const hair = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), hairMat);
-        hair.position.set(0, 0.78, -0.01);
-        group.add(hair);
+        // Head Mesh (radius 0.10 is smaller and fits better)
+        const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 10), skinMat);
+        head.add(headMesh);
 
-        // ── Face ──────────────────────────────────────────────
+        // Hair (styled modern boxy cut, nested)
+        const hair = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.18), hairMat);
+        hair.position.set(0, 0.08, -0.01);
+        head.add(hair);
+
+        // ── Face (all nested inside head) ─────────────────────
         const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8f8f8, roughness: 0.8 });
         const pupilMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
         const mouthMat = new THREE.MeshStandardMaterial({ color: 0xc47060, roughness: 0.7 });
 
         // Eyes (sclera)
-        const eyeGeo = new THREE.SphereGeometry(0.022, 8, 6);
+        const eyeGeo = new THREE.SphereGeometry(0.02, 8, 6);
         const eyeL = new THREE.Mesh(eyeGeo, eyeWhiteMat);
-        eyeL.position.set(-0.04, 0.72, 0.10);
-        group.add(eyeL);
+        eyeL.position.set(-0.035, 0.02, 0.09);
+        head.add(eyeL);
+        
         const eyeR = new THREE.Mesh(eyeGeo, eyeWhiteMat);
-        eyeR.position.set(0.04, 0.72, 0.10);
-        group.add(eyeR);
+        eyeR.position.set(0.035, 0.02, 0.09);
+        head.add(eyeR);
 
-        // Pupils
-        const pupilGeo = new THREE.SphereGeometry(0.012, 6, 6);
+        // Pupils (nested inside eyes so they scale and rotate with the eye)
+        const pupilGeo = new THREE.SphereGeometry(0.011, 6, 6);
         const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
-        pupilL.position.set(-0.04, 0.72, 0.118);
-        group.add(pupilL);
+        pupilL.position.set(0, 0, 0.014);
+        eyeL.add(pupilL);
+        
         const pupilR = new THREE.Mesh(pupilGeo, pupilMat);
-        pupilR.position.set(0.04, 0.72, 0.118);
-        group.add(pupilR);
+        pupilR.position.set(0, 0, 0.014);
+        eyeR.add(pupilR);
 
         // Nose
-        const nose = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.04, 0.025), skinMat);
-        nose.position.set(0, 0.69, 0.115);
-        group.add(nose);
+        const nose = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.02), skinMat);
+        nose.position.set(0, -0.01, 0.095);
+        head.add(nose);
 
         // Mouth
-        const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.01, 0.01), mouthMat);
-        mouth.position.set(0, 0.655, 0.10);
-        group.add(mouth);
+        const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.008, 0.008), mouthMat);
+        mouth.position.set(0, -0.045, 0.09);
+        head.add(mouth);
 
         // ── Leg Hierarchy ──────────────────────────────────────
         // Left Leg
@@ -1446,6 +1452,13 @@ export class OfficeScene {
                 leftHand: leftHand,
                 rightHand: rightHand,
                 
+                eyeL: eyeL,
+                eyeR: eyeR,
+                mouth: mouth,
+                isBlinking: false,
+                blinkTimer: 1.0 + Math.random() * 4.0,
+                blinkDuration: 0.0,
+                
                 type: "sitting_desk",
                 state: "sitting",
                 homeX: x,
@@ -1503,6 +1516,13 @@ export class OfficeScene {
                 rightFore: rightFore,
                 leftHand: leftHand,
                 rightHand: rightHand,
+                
+                eyeL: eyeL,
+                eyeR: eyeR,
+                mouth: mouth,
+                isBlinking: false,
+                blinkTimer: 1.0 + Math.random() * 4.0,
+                blinkDuration: 0.0,
                 
                 type: "sitting_stool",
                 state: "sitting",
@@ -1914,6 +1934,64 @@ export class OfficeScene {
                     emp.targetPose.rightFore.rx = -0.6 + Math.cos(time * 2.2) * 0.2;
                     emp.lookTargetX = Math.sin(time * 2.5) * 0.05;
                 }
+            }
+
+            // ── Face Reactions & Movements ─────────────────────
+            if (emp.eyeL && emp.eyeR && emp.mouth) {
+                // 1. Blinking timer update
+                emp.blinkTimer -= dt;
+                if (emp.blinkTimer <= 0) {
+                    emp.isBlinking = true;
+                    emp.blinkDuration = 0.12; // 120ms blink
+                    emp.blinkTimer = 2.5 + Math.random() * 4.0;
+                }
+                if (emp.isBlinking) {
+                    emp.blinkDuration -= dt;
+                    if (emp.blinkDuration <= 0) {
+                        emp.isBlinking = false;
+                    }
+                }
+
+                // 2. State-based Expression Configurations
+                let targetEyeScaleY = 1.0;
+                let targetMouthScaleX = 1.0;
+                let targetMouthScaleY = 1.0;
+
+                const isBossPresent = this.boss && this.boss.group && this.boss.group.visible;
+
+                if (isBossPresent) {
+                    // Panic/alert expression: wide open eyes, small round mouth
+                    targetEyeScaleY = 1.35;
+                    targetMouthScaleX = 0.55;
+                    targetMouthScaleY = 1.6;
+                } else if (emp.isTyping && emp.state === "sitting") {
+                    // Focused/working hard expression: slightly squinted eyes
+                    targetEyeScaleY = 0.8;
+                    targetMouthScaleX = 1.05;
+                    targetMouthScaleY = 0.85;
+                } else if (emp.gesture === "chatting") {
+                    // Speaking/talking expression: mouth oscillates dynamically
+                    const speakCycle = Date.now() * 0.015;
+                    targetMouthScaleY = 0.6 + Math.abs(Math.sin(speakCycle)) * 2.2;
+                    targetMouthScaleX = 0.8 + Math.cos(speakCycle) * 0.25;
+                } else if (emp.gesture === "raising_hand") {
+                    // Pleased/waving expression: wide smile
+                    targetMouthScaleX = 1.25;
+                    targetMouthScaleY = 0.6;
+                }
+
+                // Blink override
+                if (emp.isBlinking) {
+                    targetEyeScaleY = 0.08;
+                }
+
+                // 3. Smooth face lerping for organic animations
+                const faceLerp = 1 - Math.exp(-14 * dt);
+                emp.eyeL.scale.y += (targetEyeScaleY - emp.eyeL.scale.y) * faceLerp;
+                emp.eyeR.scale.y += (targetEyeScaleY - emp.eyeR.scale.y) * faceLerp;
+                
+                emp.mouth.scale.x += (targetMouthScaleX - emp.mouth.scale.x) * faceLerp;
+                emp.mouth.scale.y += (targetMouthScaleY - emp.mouth.scale.y) * faceLerp;
             }
         });
     }
