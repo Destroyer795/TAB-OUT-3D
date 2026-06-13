@@ -28,6 +28,8 @@ import AudioManager from '../audio/AudioManager.js';
 import { HUD }            from '../ui/HUD.js';
 import { Menu }           from '../ui/Menu.js';
 import { GameOverScreen } from '../ui/GameOverScreen.js';
+import { Auth }           from '../ui/Auth.js';
+import AuthSystem         from './AuthSystem.js';
 
 /* ── Camera defaults ──────────────────────────────────── */
 const CAM_DEFAULT  = { x: 0, y: 2.1, z: 1.8, lookY: 1.45 };
@@ -77,7 +79,11 @@ export class Game {
 
         /* ── UI ───────────────────────────────────────── */
         this.hud    = new HUD();
-        this.menu   = new Menu(() => this._startGame());
+        this.auth   = new Auth(() => this.menu.show());
+        this.menu   = new Menu(
+            () => this._startGame(),
+            () => this._signOutUser()
+        );
         this.gameOver = new GameOverScreen(
             () => this._startGame(),
             () => this._goToMenu()
@@ -96,8 +102,12 @@ export class Game {
         /* ── Resize ───────────────────────────────────── */
         window.addEventListener('resize', () => this._onResize());
 
-        /* ── Start at menu ────────────────────────────── */
-        this.menu.show();
+        /* ── Start at Auth or Menu ────────────────────── */
+        if (AuthSystem.isLoggedIn()) {
+            this.menu.show();
+        } else {
+            this.auth.show();
+        }
 
         /* ── Game loop ────────────────────────────────── */
         this._loop = this._loop.bind(this);
@@ -262,6 +272,12 @@ export class Game {
 
     _goToMenu() {
         this.fsm.reset();
+    }
+
+    _signOutUser() {
+        AuthSystem.signOut();
+        this.menu.hide();
+        this.auth.show();
     }
 
     _handleGameOver(type) {

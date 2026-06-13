@@ -534,3 +534,297 @@ canvas {
     color: var(--c-text);
     box-shadow: none;
 }
+
+/* ══════════════════════════════════════════════════════════
+   AUTHENTICATION OVERLAY
+   ══════════════════════════════════════════════════════════ */
+
+#auth {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+#auth.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.auth-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 40%, rgba(0,255,136,0.08) 0%, transparent 65%),
+                linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(13,15,20,0.98) 100%);
+    backdrop-filter: blur(10px);
+}
+
+.auth-card {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    padding: 40px 36px;
+    background: var(--c-card);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    animation: authSlideIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes authSlideIn {
+    from { transform: translateY(30px) scale(0.95); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.auth-title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 4px;
+}
+
+.auth-subtitle {
+    font-size: 0.85rem;
+    color: var(--c-text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.auth-tabs {
+    display: flex;
+    border-bottom: 2px solid rgba(255,255,255,0.05);
+    margin-bottom: 24px;
+    gap: 8px;
+}
+
+.auth-tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: none;
+    border: none;
+    color: var(--c-text-dim);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.3s, border-bottom-color 0.3s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.auth-tab-btn:hover {
+    color: var(--c-text);
+}
+
+.auth-tab-btn.active {
+    color: var(--c-accent);
+    border-bottom-color: var(--c-accent);
+    text-shadow: 0 0 10px rgba(0,255,136,0.3);
+}
+
+.auth-error-box {
+    display: none;
+    padding: 12px 16px;
+    background: rgba(255, 23, 68, 0.1);
+    border: 1px solid rgba(255, 23, 68, 0.3);
+    border-radius: 8px;
+    color: #ff5252;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    animation: shakeError 0.4s ease;
+}
+
+.auth-error-box.visible {
+    display: block;
+}
+
+@keyframes shakeError {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+
+.form-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--c-text-dim);
+    text-transform: uppercase;
+}
+
+.form-group input {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    color: var(--c-text);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.form-group input:focus {
+    border-color: var(--c-accent);
+    box-shadow: 0 0 12px rgba(0,255,136,0.15);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-submit-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 14px 0;
+}
+
+/* ── Menu User Banner ──────────────────────────────────── */
+
+.menu-user-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    text-align: left;
+}
+
+.user-greeting {
+    font-size: 0.95rem;
+    color: var(--c-text-dim);
+}
+
+.user-highlight {
+    font-weight: 700;
+    color: var(--c-accent2);
+}
+
+.user-pb {
+    font-size: 0.85rem;
+    color: var(--c-text-dim);
+}
+
+.pb-highlight {
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--c-accent);
+}
+
+.menu-btn-secondary {
+    background: transparent;
+    color: var(--c-text-dim);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.menu-btn-secondary:hover {
+    background: rgba(255, 25, 68, 0.1);
+    color: #ff5252;
+    border-color: rgba(255, 25, 68, 0.2);
+    box-shadow: none;
+}
+
+.sign-out-btn {
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+/* ── Leaderboard Widget ────────────────────────────────── */
+
+.menu-leaderboard {
+    margin: 10px auto 24px;
+    width: 100%;
+    max-width: 380px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.leaderboard-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--c-accent2);
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.leaderboard-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.01);
+    border-radius: 8px;
+    font-size: 0.88rem;
+    border: 1px solid transparent;
+}
+
+.leaderboard-row-self {
+    background: rgba(0, 255, 136, 0.04);
+    border-color: rgba(0, 255, 136, 0.15);
+}
+
+.leaderboard-row .rank {
+    width: 28px;
+    font-weight: 700;
+}
+
+.leaderboard-row .username {
+    flex: 1;
+    text-align: left;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.leaderboard-row .score {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--c-accent);
+}
+
+.leaderboard-row-self .username {
+    color: var(--c-accent2);
+}
+
+.leaderboard-empty {
+    font-size: 0.8rem;
+    color: var(--c-text-dim);
+    text-align: center;
+    padding: 8px 0;
+    font-style: italic;
+}
