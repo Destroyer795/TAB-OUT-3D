@@ -369,9 +369,101 @@ export class BossCharacter {
 
     /* ── Public API ─────────────────────────────────────────────── */
 
+    _getPathState(pathIndex, progress) {
+        let x = 0, y = 0, z = -4.5;
+        let bodyRotY = 0;
+
+        switch (pathIndex) {
+            case 0: // Right to Left (Main walkway)
+                x = lerp(8, -8, progress);
+                z = -4.5;
+                bodyRotY = -Math.PI / 2;
+                break;
+            case 1: // Left to Right (Main walkway)
+                x = lerp(-8, 8, progress);
+                z = -4.5;
+                bodyRotY = Math.PI / 2;
+                break;
+            case 2: { // Back-Left corridor to Main-Right walkway
+                if (progress < 0.5) {
+                    const t = progress / 0.5;
+                    x = -7.0;
+                    z = lerp(-18.0, -4.5, t);
+                    
+                    // Smooth turn to the right (facing positive X)
+                    if (progress > 0.4) {
+                        const turnT = (progress - 0.4) / 0.1;
+                        bodyRotY = lerp(0, Math.PI / 2, turnT);
+                    } else {
+                        bodyRotY = 0;
+                    }
+                } else {
+                    const t = (progress - 0.5) / 0.5;
+                    x = lerp(-7.0, 8.0, t);
+                    z = -4.5;
+                    bodyRotY = Math.PI / 2;
+                }
+                break;
+            }
+            case 3: { // Back-Right corridor to Main-Left walkway
+                if (progress < 0.5) {
+                    const t = progress / 0.5;
+                    x = 7.0;
+                    z = lerp(-18.0, -4.5, t);
+                    
+                    // Smooth turn to the left (facing negative X)
+                    if (progress > 0.4) {
+                        const turnT = (progress - 0.4) / 0.1;
+                        bodyRotY = lerp(0, -Math.PI / 2, turnT);
+                    } else {
+                        bodyRotY = 0;
+                    }
+                } else {
+                    const t = (progress - 0.5) / 0.5;
+                    x = lerp(7.0, -8.0, t);
+                    z = -4.5;
+                    bodyRotY = -Math.PI / 2;
+                }
+                break;
+            }
+            case 4: { // Main-Left walkway to Back-Right corridor (Walk in and Turn Away)
+                if (progress < 0.5) {
+                    const t = progress / 0.5;
+                    x = lerp(-8.0, 7.0, t);
+                    z = -4.5;
+                    bodyRotY = Math.PI / 2;
+                    
+                    // Smooth turn towards the back (facing -Z, which is rotation PI)
+                    if (progress > 0.4) {
+                        const turnT = (progress - 0.4) / 0.1;
+                        bodyRotY = lerp(Math.PI / 2, Math.PI, turnT);
+                    }
+                } else {
+                    const t = (progress - 0.5) / 0.5;
+                    x = 7.0;
+                    z = lerp(-4.5, -18.0, t);
+                    bodyRotY = Math.PI;
+                }
+                break;
+            }
+        }
+
+        return { x, y, z, bodyRotY };
+    }
+
     show() {
         this.group.visible = true;
-        this.group.position.x = this._startX;
+        
+        // Randomly select a path index
+        this._currentPathIndex = Math.floor(Math.random() * 5);
+        
+        // For Path 2, decide the turn direction: -1 = left, 1 = right
+        this._path2Direction = Math.random() < 0.5 ? -1 : 1;
+
+        // Set the initial position based on progress = 0
+        const state = this._getPathState(this._currentPathIndex, 0);
+        this.group.position.set(state.x, state.y, state.z);
+        this.group.rotation.y = state.bodyRotY;
     }
 
     hide() {
@@ -385,8 +477,10 @@ export class BossCharacter {
     updateWalk(progress) {
         if (!this.group.visible) return;
 
-        this.group.position.x = lerp(this._startX, this._endX, progress);
-        this.group.position.z = this._posZ;
+        // Calculate position and body rotation based on selected path
+        const state = this._getPathState(this._currentPathIndex, progress);
+        this.group.position.set(state.x, state.y, state.z);
+        this.group.rotation.y = state.bodyRotY;
 
         // Arm and leg swing
         const swing = Math.sin(progress * Math.PI * 8) * 0.40;
@@ -398,8 +492,27 @@ export class BossCharacter {
         // Subtle body bob (stay grounded)
         this.modelGroup.position.y = Math.abs(Math.sin(progress * Math.PI * 8)) * 0.045;
 
-        // Very slight head turn toward direction of travel (menacing)
-        this.head.rotation.y = -0.08;
+        // Dynamic head tracking - turn head to look at the player's desk (0, 0.85, 0)
+        const bx = this.group.position.x;
+        const bz = this.group.position.z;
+
+        // Vector from boss head to player's desk
+        const dx = 0 - bx;
+        const dz = 0 - bz;
+        
+        // Target angle in world space around Y axis
+        const worldAngle = Math.atan2(dx, dz);
+        
+        // Convert to local angle relative to boss body rotation
+        let localAngleY = worldAngle - this.group.rotation.y;
+        localAngleY = Math.atan2(Math.sin(localAngleY), Math.cos(localAngleY));
+        localAngleY = Math.max(-1.22, Math.min(1.22, localAngleY));
+        this.head.rotation.y = localAngleY;
+
+        // Head tilt/pitch to look down at the desk
+        const dist2D = Math.sqrt(dx * dx + dz * dz);
+        const pitchAngle = Math.atan2(-1.87, dist2D);
+        this.head.rotation.x = Math.max(-0.45, Math.min(0.1, pitchAngle));
     }
 
     dispose() {

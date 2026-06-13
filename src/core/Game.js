@@ -123,6 +123,7 @@ export class Game {
         });
 
         EventBus.on('bossGone', () => {
+            this.boss.hide();
             if (this.fsm.current === GameState.BOSS_PRESENT ||
                 this.fsm.current === GameState.HIDING) {
                 // Return to appropriate state
@@ -130,7 +131,7 @@ export class Game {
                     this.fsm.transition(GameState.PLAYING);
                 } else {
                     // Still hiding – go to HIDING
-                    this.fsm.transition(GameState.PLAYING);
+                    this.fsm.transition(GameState.HIDING);
                 }
             }
         });
@@ -196,12 +197,10 @@ export class Game {
                 this.lighting.stopWarning();
                 this.hud.hideAlert();
                 this._showArcade();
-                this._camTarget = { ...CAM_DEFAULT };
                 break;
 
             case GameState.HIDING:
                 this._showSpreadsheet();
-                this._camTarget = { ...CAM_HIDING };
                 break;
 
             case GameState.BOSS_WARNING:
@@ -285,6 +284,7 @@ export class Game {
         this.hud.setMode('arcade');
         this.lighting.setMonitorColor(0x00ffaa);
         AudioManager.playShowSwitch();
+        this._camTarget = { ...CAM_DEFAULT };
     }
 
     _showSpreadsheet() {
@@ -292,6 +292,7 @@ export class Game {
         this.hud.setMode('stealth');
         this.lighting.setMonitorColor(0xddeeff);
         AudioManager.playHideSwitch();
+        this._camTarget = { ...CAM_HIDING };
     }
 
     /* ══════════════════════════════════════════════════════
@@ -368,6 +369,9 @@ export class Game {
         // Lighting
         this.lighting.update(dt);
 
+        // Office Scene Animation (typing, talking, looking around)
+        this.officeScene.update(dt);
+
         if (!this.fsm.isActive) return;
 
         // ── Boss system ──────────────────────────
@@ -376,10 +380,15 @@ export class Game {
         // Boss walk animation
         if (this.bossSystem.phase === 'present') {
             this.boss.updateWalk(this.bossSystem.bossProgress);
+
+            // Terminate the presence phase immediately if the boss walks out of the player's POV
+            if (!this.isBossVisible() && this.bossSystem.bossProgress > 0.5) {
+                this.bossSystem.endPresence();
+            }
         }
 
         // ── Detection: boss sees arcade game ─────
-        if (state === GameState.BOSS_PRESENT && this._showingArcade) {
+        if (this.fsm.current === GameState.BOSS_PRESENT && this._showingArcade && this.isBossVisible()) {
             this.fsm.transition(GameState.GAMEOVER_FIRED);
             return;
         }
@@ -411,6 +420,26 @@ export class Game {
             this.spreadsheet.render();
         }
         this.monitor.needsUpdate();
+    }
+
+    isBossVisible() {
+        if (!this.boss.group.visible) return false;
+
+        const bx = this.boss.group.position.x;
+        const bz = this.boss.group.position.z;
+
+        // Compute the visible X range at the boss's current Z coordinate
+        // based on line of sight from camera (0, 0, 1.8) past the cubicle opening at z = -2.5, x = +/- 1.8
+        const zDistCamToWall = 1.8 - (-2.5); // 4.3
+        const zDistCamToBoss = 1.8 - bz;
+
+        const maxVisibleX = 1.8 * (zDistCamToBoss / zDistCamToWall);
+        
+        // Add a margin (e.g. 1.2 units) for the boss's wide physical body width
+        const bodyMargin = 1.2;
+        const limitX = maxVisibleX + bodyMargin;
+
+        return (bx >= -limitX && bx <= limitX);
     }
 
     /* ── Render ────────────────────────────────────────── */

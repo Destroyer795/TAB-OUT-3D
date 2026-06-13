@@ -11,7 +11,7 @@ export class BossSystem {
         this.minInterval   = 6;    // seconds between boss events
         this.maxInterval   = 10;
         this.warningTime   = 1.5;  // warning phase duration
-        this.presenceTime  = 2.5;  // boss visible duration
+        this.presenceTime  = 4.0;  // boss visible duration
 
         /* ── Internal state ────────────────────────────── */
         this._timer        = 0;
@@ -72,12 +72,18 @@ export class BossSystem {
                 }
 
                 if (this._phaseTimer >= this.presenceTime) {
-                    this._phase = 'idle';
-                    this._bossProgress = 0;
-                    this._scheduleNext();
-                    EventBus.emit('bossGone');
+                    this.endPresence();
                 }
                 break;
+        }
+    }
+
+    endPresence() {
+        if (this._phase === 'present') {
+            this._phase = 'idle';
+            this._bossProgress = 0;
+            this._scheduleNext();
+            EventBus.emit('bossGone');
         }
     }
 
