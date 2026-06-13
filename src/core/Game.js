@@ -63,6 +63,8 @@ export class Game {
         this.monitor     = new Monitor(this.scene);
         this.lighting    = new LightingSystem(this.scene);
         this.boss        = new BossCharacter(this.scene);
+        this.officeScene.setBoss(this.boss);
+        this.boss.setOfficeScene(this.officeScene);
 
         /* ── Gameplay systems ─────────────────────────── */
         this.arcadeGame   = new ArcadeGame(this.monitor.getCanvas());

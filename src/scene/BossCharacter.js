@@ -32,6 +32,11 @@ export class BossCharacter {
         this._posY = 0;
 
         this.group.position.set(this._startX, this._posY, this._posZ);
+        this.officeScene = null;
+    }
+
+    setOfficeScene(officeScene) {
+        this.officeScene = officeScene;
     }
 
     _build() {
@@ -479,18 +484,48 @@ export class BossCharacter {
 
         // Calculate position and body rotation based on selected path
         const state = this._getPathState(this._currentPathIndex, progress);
-        this.group.position.set(state.x, state.y, state.z);
-        this.group.rotation.y = state.bodyRotY;
 
-        // Arm and leg swing
-        const swing = Math.sin(progress * Math.PI * 8) * 0.40;
-        this._leftArm.rotation.x = swing;
-        this._rightArm.rotation.x = -swing;
-        this._leftLeg.rotation.x = -swing * 0.85;
-        this._rightLeg.rotation.x = swing * 0.85;
+        let avoidX = 0;
+        let avoidZ = 0;
+        const avoidRadius = 1.2; // Start avoiding employees within this distance
+        
+        if (this.officeScene && this.officeScene.employees) {
+            for (const emp of this.officeScene.employees) {
+                if (emp.state !== "sitting") {
+                    const ex = emp.group.position.x;
+                    const ez = emp.group.position.z;
+                    const d = Math.hypot(state.x - ex, state.z - ez);
+                    if (d < avoidRadius && d > 0.01) {
+                        const pushX = (state.x - ex) / d;
+                        const pushZ = (state.z - ez) / d;
+                        const weight = (avoidRadius - d) / avoidRadius;
+                        avoidX += pushX * weight * 0.7;
+                        avoidZ += pushZ * weight * 0.7;
+                    }
+                }
+            }
+        }
 
-        // Subtle body bob (stay grounded)
-        this.modelGroup.position.y = Math.abs(Math.sin(progress * Math.PI * 8)) * 0.045;
+        this.group.position.set(state.x + avoidX, state.y, state.z + avoidZ);
+
+        // Smooth body rotation (angular lerp to avoid snapping)
+        let angleDiff = state.bodyRotY - this.group.rotation.y;
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        this.group.rotation.y += angleDiff * 0.12;
+
+        // Smooth sinusoidal walk cycle for arms and legs
+        const walkCycle = progress * Math.PI * 8;
+        const targetSwing = Math.sin(walkCycle) * 0.35;
+
+        // Smooth lerp for arm/leg swing
+        this._leftArm.rotation.x += (targetSwing - this._leftArm.rotation.x) * 0.15;
+        this._rightArm.rotation.x += (-targetSwing - this._rightArm.rotation.x) * 0.15;
+        this._leftLeg.rotation.x += (-targetSwing * 0.8 - this._leftLeg.rotation.x) * 0.15;
+        this._rightLeg.rotation.x += (targetSwing * 0.8 - this._rightLeg.rotation.x) * 0.15;
+
+        // Subtle body bob (smooth)
+        const targetBob = Math.abs(Math.sin(walkCycle)) * 0.04;
+        this.modelGroup.position.y += (targetBob - this.modelGroup.position.y) * 0.15;
 
         // Dynamic head tracking - turn head to look at the player's desk (0, 0.85, 0)
         const bx = this.group.position.x;
@@ -507,12 +542,15 @@ export class BossCharacter {
         let localAngleY = worldAngle - this.group.rotation.y;
         localAngleY = Math.atan2(Math.sin(localAngleY), Math.cos(localAngleY));
         localAngleY = Math.max(-1.22, Math.min(1.22, localAngleY));
-        this.head.rotation.y = localAngleY;
 
-        // Head tilt/pitch to look down at the desk
+        // Smooth head yaw tracking
+        this.head.rotation.y += (localAngleY - this.head.rotation.y) * 0.08;
+
+        // Head tilt/pitch to look down at the desk (smooth)
         const dist2D = Math.sqrt(dx * dx + dz * dz);
         const pitchAngle = Math.atan2(-1.87, dist2D);
-        this.head.rotation.x = Math.max(-0.45, Math.min(0.1, pitchAngle));
+        const clampedPitch = Math.max(-0.45, Math.min(0.1, pitchAngle));
+        this.head.rotation.x += (clampedPitch - this.head.rotation.x) * 0.08;
     }
 
     dispose() {

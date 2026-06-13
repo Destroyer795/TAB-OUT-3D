@@ -16,6 +16,10 @@ export class OfficeScene {
         this.scene.add(this.group);
     }
 
+    setBoss(boss) {
+        this.boss = boss;
+    }
+
     _build() {
         this._createFloor();
         this._createCeiling();
@@ -1320,68 +1324,110 @@ export class OfficeScene {
         mouth.position.set(0, 0.655, 0.10);
         group.add(mouth);
 
-        // Sitting legs: Thighs extending forward
-        const leftThigh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.32), pantsMat);
-        leftThigh.position.set(-0.09, 0.16, 0.12);
+        // ── Leg Hierarchy ──────────────────────────────────────
+        // Left Leg
+        const leftThigh = new THREE.Group();
+        leftThigh.position.set(-0.09, 0.16, 0.0);
         group.add(leftThigh);
 
-        const rightThigh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.32), pantsMat);
-        rightThigh.position.set(0.09, 0.16, 0.12);
+        const leftThighMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), pantsMat);
+        leftThighMesh.position.set(0, -0.16, 0);
+        leftThigh.add(leftThighMesh);
+
+        const leftCalf = new THREE.Group();
+        leftCalf.position.set(0, -0.32, 0);
+        leftThigh.add(leftCalf);
+
+        const leftCalfMesh = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.32, 0.075), pantsMat);
+        leftCalfMesh.position.set(0, -0.16, 0);
+        leftCalf.add(leftCalfMesh);
+
+        const leftShoe = new THREE.Group();
+        leftShoe.position.set(0, -0.32, 0.02);
+        leftCalf.add(leftShoe);
+
+        const leftShoeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), shoeMat);
+        leftShoeMesh.position.set(0, -0.025, 0.03);
+        leftShoe.add(leftShoeMesh);
+
+        // Right Leg
+        const rightThigh = new THREE.Group();
+        rightThigh.position.set(0.09, 0.16, 0.0);
         group.add(rightThigh);
 
-        // Calves extending down
-        const leftCalf = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.32, 0.075), pantsMat);
-        leftCalf.position.set(-0.09, 0.0, 0.24);
-        group.add(leftCalf);
+        const rightThighMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.08), pantsMat);
+        rightThighMesh.position.set(0, -0.16, 0);
+        rightThigh.add(rightThighMesh);
 
-        const rightCalf = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.32, 0.075), pantsMat);
-        rightCalf.position.set(0.09, 0.0, 0.24);
-        group.add(rightCalf);
+        const rightCalf = new THREE.Group();
+        rightCalf.position.set(0, -0.32, 0);
+        rightThigh.add(rightCalf);
 
-        // Shoes
-        const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), shoeMat);
-        leftShoe.position.set(-0.09, -0.17, 0.26);
-        group.add(leftShoe);
+        const rightCalfMesh = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.32, 0.075), pantsMat);
+        rightCalfMesh.position.set(0, -0.16, 0);
+        rightCalf.add(rightCalfMesh);
 
-        const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), shoeMat);
-        rightShoe.position.set(0.09, -0.17, 0.26);
-        group.add(rightShoe);
+        const rightShoe = new THREE.Group();
+        rightShoe.position.set(0, -0.32, 0.02);
+        rightCalf.add(rightShoe);
 
-        // Arms (typing posture or resting posture)
+        const rightShoeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), shoeMat);
+        rightShoeMesh.position.set(0, -0.025, 0.03);
+        rightShoe.add(rightShoeMesh);
+
+        // ── Arm Hierarchy ──────────────────────────────────────
+        // Left Arm
+        const leftUpper = new THREE.Group();
+        leftUpper.position.set(-0.18, 0.52, 0.0);
+        group.add(leftUpper);
+
+        const leftUpperMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.24, 0.06), shirtMat);
+        leftUpperMesh.position.set(0, -0.12, 0);
+        leftUpper.add(leftUpperMesh);
+
+        const leftFore = new THREE.Group();
+        leftFore.position.set(0, -0.24, 0);
+        leftUpper.add(leftFore);
+
+        const leftForeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.20, 0.05), shirtMat);
+        leftForeMesh.position.set(0, -0.10, 0);
+        leftFore.add(leftForeMesh);
+
+        const leftHand = new THREE.Group();
+        leftHand.position.set(0, -0.20, 0);
+        leftFore.add(leftHand);
+
+        const leftHandMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.06), skinMat);
+        leftHandMesh.position.set(0, -0.02, 0);
+        leftHand.add(leftHandMesh);
+
+        // Right Arm
+        const rightUpper = new THREE.Group();
+        rightUpper.position.set(0.18, 0.52, 0.0);
+        group.add(rightUpper);
+
+        const rightUpperMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.24, 0.06), shirtMat);
+        rightUpperMesh.position.set(0, -0.12, 0);
+        rightUpper.add(rightUpperMesh);
+
+        const rightFore = new THREE.Group();
+        rightFore.position.set(0, -0.24, 0);
+        rightUpper.add(rightFore);
+
+        const rightForeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.20, 0.05), shirtMat);
+        rightForeMesh.position.set(0, -0.10, 0);
+        rightFore.add(rightForeMesh);
+
+        const rightHand = new THREE.Group();
+        rightHand.position.set(0, -0.20, 0);
+        rightFore.add(rightHand);
+
+        const rightHandMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.06), skinMat);
+        rightHandMesh.position.set(0, -0.02, 0);
+        rightHand.add(rightHandMesh);
+
+        // Push employee object to appropriate container
         if (config.type === "sitting_desk") {
-            // Left Arm: Upper arm extending forward/down from shoulder
-            const leftUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.22), shirtMat);
-            leftUpper.position.set(-0.18, 0.52, 0.08);
-            leftUpper.rotation.x = 0.2;
-            group.add(leftUpper);
-
-            // Right Arm: Upper arm extending forward/down from shoulder
-            const rightUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.22), shirtMat);
-            rightUpper.position.set(0.18, 0.52, 0.08);
-            rightUpper.rotation.x = 0.2;
-            group.add(rightUpper);
-
-            // Left Forearm: extends horizontally resting on keyboard
-            const leftFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.22), shirtMat);
-            leftFore.position.set(-0.14, 0.55, 0.22);
-            leftFore.rotation.x = -0.1;
-            group.add(leftFore);
-
-            // Right Forearm: extends horizontally resting on keyboard
-            const rightFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.22), shirtMat);
-            rightFore.position.set(0.14, 0.55, 0.22);
-            rightFore.rotation.x = -0.1;
-            group.add(rightFore);
-
-            // Hands resting on keyboard keys
-            const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
-            leftHand.position.set(-0.1, 0.56, 0.32);
-            group.add(leftHand);
-
-            const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
-            rightHand.position.set(0.1, 0.56, 0.32);
-            group.add(rightHand);
-
             this.employees.push({
                 group: group,
                 head: head,
@@ -1401,14 +1447,12 @@ export class OfficeScene {
                 rightHand: rightHand,
                 
                 type: "sitting_desk",
-                state: "sitting", // sitting | walking | standing | returning
+                state: "sitting",
                 homeX: x,
                 homeY: y,
                 homeZ: z,
                 homeRotationY: rotationY,
                 
-                baseLeftHandY: leftHand.position.y,
-                baseRightHandY: rightHand.position.y,
                 animOffset: Math.random() * 100,
                 typeTimer: Math.random() * 2,
                 isTyping: Math.random() > 0.5,
@@ -1418,46 +1462,30 @@ export class OfficeScene {
                 lookTargetX: 0,
                 lookCurrY: 0,
                 lookCurrX: 0,
-                walkCooldown: 5.0 + Math.random() * 15.0, // initial cooldown
+                walkCooldown: 5.0 + Math.random() * 15.0,
                 walkSpeed: 1.4 + Math.random() * 0.4,
                 path: [],
                 pathIndex: 0,
-                standTimer: 0
+                standTimer: 0,
+                gesture: "none",
+                gestureTimer: 2.0 + Math.random() * 5.0,
+                targetPose: {
+                    leftThigh:  { rx: -Math.PI / 2 },
+                    rightThigh: { rx: -Math.PI / 2 },
+                    leftCalf:   { rx: Math.PI / 2 },
+                    rightCalf:  { rx: Math.PI / 2 },
+                    leftShoe:   { rx: 0 },
+                    rightShoe:  { rx: 0 },
+                    leftUpper:  { rx: -1.2, rz: 0.1 },
+                    rightUpper: { rx: -1.2, rz: -0.1 },
+                    leftFore:   { rx: -0.4 },
+                    rightFore:  { rx: -0.4 },
+                    leftHand:   { rx: 0.2 },
+                    rightHand:  { rx: 0.2 },
+                    groupY: y
+                }
             });
         } else {
-            // Left Arm: Upper arm extending down to meeting table level
-            const leftUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.24), shirtMat);
-            leftUpper.position.set(-0.18, 0.48, 0.1);
-            leftUpper.rotation.x = 0.4;
-            group.add(leftUpper);
-
-            // Right Arm: Upper arm extending down to meeting table level
-            const rightUpper = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.24), shirtMat);
-            rightUpper.position.set(0.18, 0.48, 0.1);
-            rightUpper.rotation.x = 0.4;
-            group.add(rightUpper);
-
-            // Left Forearm resting flat on birch table top
-            const leftFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.24), shirtMat);
-            leftFore.position.set(-0.13, 0.48, 0.26);
-            leftFore.rotation.x = -0.1;
-            group.add(leftFore);
-
-            // Right Forearm resting flat on birch table top
-            const rightFore = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.24), shirtMat);
-            rightFore.position.set(0.13, 0.48, 0.26);
-            rightFore.rotation.x = -0.1;
-            group.add(rightFore);
-
-            // Hands resting flat on birch wood top
-            const leftHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
-            leftHand.position.set(-0.09, 0.485, 0.36);
-            group.add(leftHand);
-
-            const rightHand = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.06), skinMat);
-            rightHand.position.set(0.09, 0.485, 0.36);
-            group.add(rightHand);
-
             this.employees.push({
                 group: group,
                 head: head,
@@ -1483,15 +1511,30 @@ export class OfficeScene {
                 homeZ: z,
                 homeRotationY: rotationY,
                 
-                baseLeftHandY: leftHand.position.y,
-                baseRightHandY: rightHand.position.y,
                 animOffset: Math.random() * 100,
                 typeTimer: Math.random() * 2,
                 lookTimer: Math.random() * 3,
                 lookTargetY: 0,
                 lookTargetX: 0,
                 lookCurrY: 0,
-                lookCurrX: 0
+                lookCurrX: 0,
+                gesture: "none",
+                gestureTimer: 2.0 + Math.random() * 5.0,
+                targetPose: {
+                    leftThigh:  { rx: -Math.PI / 2 },
+                    rightThigh: { rx: -Math.PI / 2 },
+                    leftCalf:   { rx: Math.PI / 2 },
+                    rightCalf:  { rx: Math.PI / 2 },
+                    leftShoe:   { rx: 0 },
+                    rightShoe:  { rx: 0 },
+                    leftUpper:  { rx: -0.8, rz: 0.15 },
+                    rightUpper: { rx: -0.8, rz: -0.15 },
+                    leftFore:   { rx: -0.5 },
+                    rightFore:  { rx: -0.5 },
+                    leftHand:   { rx: 0.2 },
+                    rightHand:  { rx: 0.2 },
+                    groupY: y
+                }
             });
         }
 
@@ -1499,68 +1542,66 @@ export class OfficeScene {
     }
 
     _toStanding(emp) {
-        // Thighs: rotate to point downward (long axis Z → -Y)
-        emp.leftThigh.rotation.x = -Math.PI / 2;
-        emp.leftThigh.position.set(-0.09, 0.0, 0.0);
-        emp.rightThigh.rotation.x = -Math.PI / 2;
-        emp.rightThigh.position.set(0.09, 0.0, 0.0);
-
-        // Calves: straight below thighs
-        emp.leftCalf.position.set(-0.09, -0.32, 0.0);
-        emp.leftCalf.rotation.x = 0;
-        emp.rightCalf.position.set(0.09, -0.32, 0.0);
-        emp.rightCalf.rotation.x = 0;
-
-        // Shoes: below calves
-        emp.leftShoe.position.set(-0.09, -0.50, 0.02);
-        emp.rightShoe.position.set(0.09, -0.50, 0.02);
-
-        // Arms hang at sides
-        emp.leftUpper.rotation.x = -Math.PI / 2;
-        emp.leftUpper.position.set(-0.20, 0.30, 0.0);
-        emp.rightUpper.rotation.x = -Math.PI / 2;
-        emp.rightUpper.position.set(0.20, 0.30, 0.0);
-
-        emp.leftFore.rotation.x = 0;
-        emp.leftFore.position.set(-0.20, 0.12, 0.0);
-        emp.rightFore.rotation.x = 0;
-        emp.rightFore.position.set(0.20, 0.12, 0.0);
-
-        emp.leftHand.position.set(-0.20, 0.02, 0.0);
-        emp.rightHand.position.set(0.20, 0.02, 0.0);
-
-        // Raise group so shoes (local y=-0.50 * scale 2.0 = -1.0) land at world y=0
-        emp.group.position.y = 1.0;
+        emp.targetPose = {
+            leftThigh:  { rx: 0 },
+            rightThigh: { rx: 0 },
+            leftCalf:   { rx: 0 },
+            rightCalf:  { rx: 0 },
+            leftShoe:   { rx: 0 },
+            rightShoe:  { rx: 0 },
+            leftUpper:  { rx: 0, rz: 0.05 },
+            rightUpper: { rx: 0, rz: -0.05 },
+            leftFore:   { rx: 0 },
+            rightFore:  { rx: 0 },
+            leftHand:   { rx: 0 },
+            rightHand:  { rx: 0 },
+            groupY: 1.0
+        };
     }
 
     _toSitting(emp) {
-        emp.leftThigh.rotation.x = 0;
-        emp.leftThigh.position.set(-0.09, 0.16, 0.12);
-        emp.rightThigh.rotation.x = 0;
-        emp.rightThigh.position.set(0.09, 0.16, 0.12);
+        emp.targetPose = {
+            leftThigh:  { rx: -Math.PI / 2 },
+            rightThigh: { rx: -Math.PI / 2 },
+            leftCalf:   { rx: Math.PI / 2 },
+            rightCalf:  { rx: Math.PI / 2 },
+            leftShoe:   { rx: 0 },
+            rightShoe:  { rx: 0 },
+            leftUpper:  { rx: -1.2, rz: 0.1 },
+            rightUpper: { rx: -1.2, rz: -0.1 },
+            leftFore:   { rx: -0.4 },
+            rightFore:  { rx: -0.4 },
+            leftHand:   { rx: 0.2 },
+            rightHand:  { rx: 0.2 },
+            groupY: emp.homeY
+        };
+    }
 
-        emp.leftCalf.rotation.x = 0;
-        emp.leftCalf.position.set(-0.09, 0.0, 0.24);
-        emp.rightCalf.rotation.x = 0;
-        emp.rightCalf.position.set(0.09, 0.0, 0.24);
+    /** Smoothly interpolate all limb positions/rotations toward targetPose */
+    _lerpLimbs(emp, dt) {
+        if (!emp.targetPose) return;
+        const speed = 3.5; // lerp speed — lower = smoother
+        const t = 1 - Math.exp(-speed * dt); // frame-rate independent lerp factor
 
-        emp.leftShoe.position.set(-0.09, -0.17, 0.26);
-        emp.rightShoe.position.set(0.09, -0.17, 0.26);
+        const _l = (cur, tgt) => cur + (tgt - cur) * t;
 
-        emp.leftUpper.rotation.x = 0.2;
-        emp.leftUpper.position.set(-0.18, 0.52, 0.08);
-        emp.rightUpper.rotation.x = 0.2;
-        emp.rightUpper.position.set(0.18, 0.52, 0.08);
+        const limbs = ['leftThigh','rightThigh','leftCalf','rightCalf','leftShoe','rightShoe',
+                        'leftUpper','rightUpper','leftFore','rightFore','leftHand','rightHand'];
 
-        emp.leftFore.rotation.x = -0.1;
-        emp.leftFore.position.set(-0.14, 0.55, 0.22);
-        emp.rightFore.rotation.x = -0.1;
-        emp.rightFore.position.set(0.14, 0.55, 0.22);
+        for (const name of limbs) {
+            const mesh = emp[name];
+            const tgt = emp.targetPose[name];
+            if (!mesh || !tgt) continue;
+            if (tgt.rx !== undefined) mesh.rotation.x = _l(mesh.rotation.x, tgt.rx);
+            if (tgt.ry !== undefined) mesh.rotation.y = _l(mesh.rotation.y, tgt.ry);
+            if (tgt.rz !== undefined) mesh.rotation.z = _l(mesh.rotation.z, tgt.rz);
+            if (tgt.px !== undefined) mesh.position.x = _l(mesh.position.x, tgt.px);
+            if (tgt.py !== undefined) mesh.position.y = _l(mesh.position.y, tgt.py);
+            if (tgt.pz !== undefined) mesh.position.z = _l(mesh.position.z, tgt.pz);
+        }
 
-        emp.leftHand.position.set(-0.1, 0.56, 0.32);
-        emp.rightHand.position.set(0.1, 0.56, 0.32);
-
-        emp.group.position.y = emp.homeY;
+        // Group Y (standing height vs sitting height)
+        emp.group.position.y = _l(emp.group.position.y, emp.targetPose.groupY);
     }
 
     _generateWalkPath(emp, dest) {
@@ -1578,7 +1619,13 @@ export class OfficeScene {
     }
 
     update(dt) {
+        const _lerp = (a, b, t) => a + (b - a) * t;
+        const smoothT = 1 - Math.exp(-3.5 * dt); // frame-rate independent lerp factor
+
         this.employees.forEach(emp => {
+            // ── 0. Smooth limb interpolation (always runs) ────
+            this._lerpLimbs(emp, dt);
+
             // ── 1. AI Walking State Machine (desk employees only) ────
             if (emp.type === "sitting_desk") {
                 if (emp.state === "sitting") {
@@ -1599,6 +1646,82 @@ export class OfficeScene {
                     const dz = target.z - emp.group.position.z;
                     const dist = Math.sqrt(dx * dx + dz * dz);
 
+                    // 1. Calculate Local Obstacle Avoidance Steering Forces
+                    let avoidX = 0;
+                    let avoidZ = 0;
+                    const avoidRadius = 1.4; // Detection radius for steering away
+
+                    // Avoid Boss
+                    if (this.boss && this.boss.group.visible) {
+                        const bx = this.boss.group.position.x;
+                        const bz = this.boss.group.position.z;
+                        const d = Math.hypot(emp.group.position.x - bx, emp.group.position.z - bz);
+                        if (d < avoidRadius && d > 0.01) {
+                            // Steer away from boss
+                            const pushX = (emp.group.position.x - bx) / d;
+                            const pushZ = (emp.group.position.z - bz) / d;
+                            const weight = (avoidRadius - d) / avoidRadius;
+                            avoidX += pushX * weight * 1.6;
+                            avoidZ += pushZ * weight * 1.6;
+                        }
+                    }
+
+                    // Avoid other active/moving employees
+                    for (const other of this.employees) {
+                        if (other === emp) continue;
+                        if (other.state !== "sitting" || other.type === "sitting_stool") {
+                            const ox = other.group.position.x;
+                            const oz = other.group.position.z;
+                            const d = Math.hypot(emp.group.position.x - ox, emp.group.position.z - oz);
+                            if (d < avoidRadius && d > 0.01) {
+                                // Steer away
+                                const pushX = (emp.group.position.x - ox) / d;
+                                const pushZ = (emp.group.position.z - oz) / d;
+                                const weight = (avoidRadius - d) / avoidRadius;
+                                avoidX += pushX * weight * 1.0;
+                                avoidZ += pushZ * weight * 1.0;
+                                
+                                // Perpendicular bias to steer to the right of each other (like polite humans)
+                                avoidX += -pushZ * weight * 0.4;
+                                avoidZ += pushX * weight * 0.4;
+                            }
+                        }
+                    }
+
+                    // 2. Backup Hard Collision Blocking (to completely halt if directly behind someone/something)
+                    let blocked = false;
+                    const collisionDist = 1.0; // tighter bound since we steer to avoid
+                    
+                    if (this.boss && this.boss.group.visible) {
+                        const bx = this.boss.group.position.x;
+                        const bz = this.boss.group.position.z;
+                        if (Math.hypot(emp.group.position.x - bx, emp.group.position.z - bz) < collisionDist) {
+                            const dxBoss = bx - emp.group.position.x;
+                            const dzBoss = bz - emp.group.position.z;
+                            // Blocked if boss is directly in our path of travel
+                            if ((dx / dist) * dxBoss + (dz / dist) * dzBoss > 0) blocked = true;
+                        }
+                    }
+                    
+                    if (!blocked) {
+                        for (const other of this.employees) {
+                            if (other === emp) continue;
+                            if (other.state === "walking" || other.state === "returning" || other.state === "standing") {
+                                const ox = other.group.position.x;
+                                const oz = other.group.position.z;
+                                if (Math.hypot(emp.group.position.x - ox, emp.group.position.z - oz) < collisionDist) {
+                                    const dxOther = ox - emp.group.position.x;
+                                    const dzOther = oz - emp.group.position.z;
+                                    // Blocked if other employee is directly in front of us
+                                    if ((dx / dist) * dxOther + (dz / dist) * dzOther > 0.2) {
+                                        blocked = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if (dist < 0.15) {
                         emp.pathIndex++;
                         if (emp.pathIndex >= emp.path.length) {
@@ -1612,21 +1735,76 @@ export class OfficeScene {
                                 this._toSitting(emp);
                             }
                         }
-                    } else {
+                    } else if (!blocked) {
                         const moveDist = emp.walkSpeed * dt;
                         const step = Math.min(moveDist, dist);
-                        emp.group.position.x += (dx / dist) * step;
-                        emp.group.position.z += (dz / dist) * step;
-                        emp.group.rotation.y = Math.atan2(dx, dz);
+                        
+                        // Normal step velocity vector towards target path node
+                        let vx = (dx / dist) * step;
+                        let vz = (dz / dist) * step;
+                        
+                        // Blend in the steering avoidance offset
+                        vx += avoidX * dt * 2.0;
+                        vz += avoidZ * dt * 2.0;
+                        
+                        // Limit final step speed to employee's walk speed
+                        const finalSpeed = Math.hypot(vx, vz);
+                        if (finalSpeed > moveDist) {
+                            vx = (vx / finalSpeed) * moveDist;
+                            vz = (vz / finalSpeed) * moveDist;
+                        }
+                        
+                        emp.group.position.x += vx;
+                        emp.group.position.z += vz;
 
-                        // Smooth walking bob (no leg animation — limbs are siblings, not parent-child)
+                        // Smooth rotation toward movement direction (smooth steering facing)
+                        const targetRotY = Math.atan2(vx, vz);
+                        let angleDiff = targetRotY - emp.group.rotation.y;
+                        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+                        emp.group.rotation.y += angleDiff * smoothT * 2;
+
+                        // Smooth walking bob
                         const bob = Math.abs(Math.sin(Date.now() * 0.008)) * 0.03;
-                        emp.group.position.y = 1.0 + bob;
+                        emp.targetPose.groupY = 1.0 + bob;
+
+                        // Walking leg & arm swing animation
+                        const walkCycle = Date.now() * 0.006 + emp.animOffset;
+                        const swing = Math.sin(walkCycle) * 0.35;
+
+                        // Legs swing opposite to each other (centered at 0)
+                        emp.targetPose.leftThigh.rx = swing;
+                        emp.targetPose.rightThigh.rx = -swing;
+                        emp.targetPose.leftCalf.rx = 0;
+                        emp.targetPose.rightCalf.rx = 0;
+
+                        // Arms swing opposite to legs
+                        emp.targetPose.leftUpper.rx = -swing * 0.6;
+                        emp.targetPose.rightUpper.rx = swing * 0.6;
+                        emp.targetPose.leftFore.rx = 0;
+                        emp.targetPose.rightFore.rx = 0;
+                    } else {
+                        // Smoothly return legs/arms to neutral standing pose when blocked
+                        emp.targetPose.leftThigh.rx = 0;
+                        emp.targetPose.rightThigh.rx = 0;
+                        emp.targetPose.leftCalf.rx = 0;
+                        emp.targetPose.rightCalf.rx = 0;
+                        emp.targetPose.leftUpper.rx = 0;
+                        emp.targetPose.rightUpper.rx = 0;
+                        emp.targetPose.leftFore.rx = 0;
+                        emp.targetPose.rightFore.rx = 0;
                     }
                 } else if (emp.state === "standing") {
                     emp.standTimer -= dt;
                     const time = Date.now() * 0.001 + emp.animOffset;
                     emp.group.rotation.y += Math.sin(time * 0.8) * 0.001;
+
+                    // Reset legs/arms to standing neutral when stopped
+                    emp.targetPose.leftThigh.rx = 0;
+                    emp.targetPose.rightThigh.rx = 0;
+                    emp.targetPose.leftUpper.rx = 0;
+                    emp.targetPose.rightUpper.rx = 0;
+                    emp.targetPose.leftFore.rx = 0;
+                    emp.targetPose.rightFore.rx = 0;
 
                     if (emp.standTimer <= 0) {
                         emp.state = "returning";
@@ -1636,8 +1814,37 @@ export class OfficeScene {
                 }
             }
 
-            // ── 2. Typing animation (sitting desk employees only) ───
-            if (emp.type === "sitting_desk" && emp.state === "sitting") {
+            // ── 2-5. All idle animations go through targetPose ─────
+            // First, reset targetPose hands/forearms/upper to base values
+            // so that animations can layer on top cleanly each frame
+            if (emp.targetPose && (emp.state === "sitting" || emp.state === "standing")) {
+                const isSitting = emp.state === "sitting";
+                if (isSitting && emp.type === "sitting_desk") {
+                    emp.targetPose.leftUpper.rx = -1.2; emp.targetPose.leftUpper.rz = 0.1;
+                    emp.targetPose.rightUpper.rx = -1.2; emp.targetPose.rightUpper.rz = -0.1;
+                    emp.targetPose.leftFore.rx = -0.4;
+                    emp.targetPose.rightFore.rx = -0.4;
+                    emp.targetPose.leftHand.rx = 0.2;
+                    emp.targetPose.rightHand.rx = 0.2;
+                } else if (isSitting && emp.type === "sitting_stool") {
+                    emp.targetPose.leftUpper.rx = -0.8; emp.targetPose.leftUpper.rz = 0.15;
+                    emp.targetPose.rightUpper.rx = -0.8; emp.targetPose.rightUpper.rz = -0.15;
+                    emp.targetPose.leftFore.rx = -0.5;
+                    emp.targetPose.rightFore.rx = -0.5;
+                    emp.targetPose.leftHand.rx = 0.2;
+                    emp.targetPose.rightHand.rx = 0.2;
+                } else if (emp.state === "standing") {
+                    emp.targetPose.leftUpper.rx = 0; emp.targetPose.leftUpper.rz = 0.05;
+                    emp.targetPose.rightUpper.rx = 0; emp.targetPose.rightUpper.rz = -0.05;
+                    emp.targetPose.leftFore.rx = 0;
+                    emp.targetPose.rightFore.rx = 0;
+                    emp.targetPose.leftHand.rx = 0;
+                    emp.targetPose.rightHand.rx = 0;
+                }
+            }
+
+            // ── Typing (desk employees, sitting) ───
+            if (emp.type === "sitting_desk" && emp.state === "sitting" && emp.targetPose) {
                 emp.typeTimer += dt;
                 if (emp.typeTimer > (emp.isTyping ? 3.0 + Math.random() * 3 : 1.0 + Math.random() * 2)) {
                     emp.isTyping = !emp.isTyping;
@@ -1645,30 +1852,26 @@ export class OfficeScene {
                 }
                 if (emp.isTyping) {
                     const time = Date.now() * 0.001 * emp.typeSpeed;
-                    emp.leftHand.position.y = emp.baseLeftHandY + Math.sin(time) * 0.012;
-                    emp.rightHand.position.y = emp.baseRightHandY + Math.cos(time + 1.2) * 0.012;
-                } else {
-                    emp.leftHand.position.y = emp.baseLeftHandY;
-                    emp.rightHand.position.y = emp.baseRightHandY;
+                    // Tapping is rapid rotation of forearms/hands
+                    emp.targetPose.leftFore.rx = -0.4 + Math.sin(time) * 0.08;
+                    emp.targetPose.rightFore.rx = -0.4 + Math.cos(time + 1.2) * 0.08;
+                    emp.targetPose.leftHand.rx = 0.2 + Math.cos(time) * 0.05;
+                    emp.targetPose.rightHand.rx = 0.2 + Math.sin(time + 1.2) * 0.05;
                 }
             }
 
-            // ── 3. Stool gestures (always sitting) ──────────────────
-            if (emp.type === "sitting_stool") {
+            // ── Stool hand gestures ───
+            if (emp.type === "sitting_stool" && emp.targetPose) {
                 const time = Date.now() * 0.001 + emp.animOffset;
-                if (Math.sin(time * 0.5) > 0.4) {
-                    emp.leftHand.position.y = emp.baseLeftHandY + Math.sin(time * 8) * 0.015;
-                    emp.rightHand.position.y = emp.baseRightHandY + Math.cos(time * 6) * 0.015;
-                } else {
-                    emp.leftHand.position.y = emp.baseLeftHandY;
-                    emp.rightHand.position.y = emp.baseRightHandY;
-                }
+                const amplitude = Math.max(0, Math.sin(time * 0.5) - 0.2) * 0.15;
+                emp.targetPose.leftFore.rx = -0.5 + Math.sin(time * 3) * amplitude;
+                emp.targetPose.rightFore.rx = -0.5 + Math.cos(time * 2.5) * amplitude;
             }
 
-            // ── 4. Head looking (all employees) ─────────────────────
+            // ── Head looking ─────────────────────
             if (emp.state === "walking" || emp.state === "returning") {
-                emp.head.rotation.y = 0;
-                emp.head.rotation.x = 0;
+                emp.lookTargetY = 0;
+                emp.lookTargetX = 0;
             } else {
                 emp.lookTimer += dt;
                 if (emp.lookTimer > 2.0 + Math.random() * 3.0) {
@@ -1676,10 +1879,41 @@ export class OfficeScene {
                     emp.lookTargetX = (Math.random() - 0.3) * 0.3;
                     emp.lookTimer = 0;
                 }
-                emp.lookCurrY += (emp.lookTargetY - emp.lookCurrY) * dt * 2.5;
-                emp.lookCurrX += (emp.lookTargetX - emp.lookCurrX) * dt * 2.5;
-                emp.head.rotation.y = emp.lookCurrY;
-                emp.head.rotation.x = emp.lookCurrX;
+            }
+            emp.lookCurrY = _lerp(emp.lookCurrY, emp.lookTargetY, smoothT);
+            emp.lookCurrX = _lerp(emp.lookCurrX, emp.lookTargetX, smoothT);
+            emp.head.rotation.y = emp.lookCurrY;
+            emp.head.rotation.x = emp.lookCurrX;
+
+            // ── Gestures (only when sitting or standing idle) ───
+            if (emp.state !== "walking" && emp.state !== "returning" && emp.targetPose) {
+                emp.gestureTimer -= dt;
+                if (emp.gestureTimer <= 0) {
+                    if (emp.gesture === "none") {
+                        const r = Math.random();
+                        if (r < 0.35) emp.gesture = "raising_hand";
+                        else if (r < 0.65) emp.gesture = "chatting";
+                        else emp.gesture = "none";
+                        emp.gestureTimer = 2.0 + Math.random() * 3.0;
+                    } else {
+                        emp.gesture = "none";
+                        emp.gestureTimer = 4.0 + Math.random() * 10.0;
+                    }
+                }
+
+                const time = Date.now() * 0.001;
+
+                if (emp.gesture === "raising_hand") {
+                    // Raise upper arm and wave side-to-side
+                    emp.targetPose.leftUpper.rx = -2.2;
+                    emp.targetPose.leftUpper.rz = 0.1 + Math.sin(time * 3.0) * 0.15;
+                    emp.targetPose.leftFore.rx = -0.2;
+                } else if (emp.gesture === "chatting") {
+                    // Conversational forearm wiggles
+                    emp.targetPose.leftFore.rx = -0.6 + Math.sin(time * 2.5) * 0.2;
+                    emp.targetPose.rightFore.rx = -0.6 + Math.cos(time * 2.2) * 0.2;
+                    emp.lookTargetX = Math.sin(time * 2.5) * 0.05;
+                }
             }
         });
     }
