@@ -176,14 +176,34 @@ class _AuthSystem {
                 }
 
                 // Fetch corresponding profile
-                const { data: profile, error: profileError } = await supabase
+                let { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', authData.user.id)
-                    .single();
+                    .maybeSingle();
 
-                if (profileError || !profile) {
-                    return { success: false, error: "User authenticated, but profile record was not found." };
+                // Self-healing: create profile if missing
+                if (!profile) {
+                    const fallbackUsername = authData.user.user_metadata?.username || mail.split('@')[0] || 'Player';
+                    const { data: newProfile, error: insertError } = await supabase
+                        .from('profiles')
+                        .insert({
+                            id: authData.user.id,
+                            username: fallbackUsername,
+                            personal_best: 0
+                        })
+                        .select()
+                        .maybeSingle();
+
+                    if (insertError) {
+                        console.error("Failed to self-heal profile on sign in:", insertError);
+                        return { success: false, error: "Authenticated successfully, but failed to create profile in database: " + insertError.message };
+                    }
+                    profile = newProfile || {
+                        id: authData.user.id,
+                        username: fallbackUsername,
+                        personal_best: 0
+                    };
                 }
 
                 this._currentUser = {
@@ -237,11 +257,41 @@ class _AuthSystem {
 
                 // If already cached and personal best is known, return it.
                 // Otherwise fetch fresh from DB.
-                const { data: profile } = await supabase
+                let { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', user.id)
-                    .single();
+                    .maybeSingle();
+
+                if (profileError) {
+                    console.error("Error fetching profile:", profileError);
+                }
+
+                // Self-healing: create profile if missing
+                if (!profile) {
+                    const fallbackUsername = user.user_metadata?.username || user.email.split('@')[0] || 'Player';
+                    const { data: newProfile, error: insertError } = await supabase
+                        .from('profiles')
+                        .insert({
+                            id: user.id,
+                            username: fallbackUsername,
+                            personal_best: 0
+                        })
+                        .select()
+                        .maybeSingle();
+
+                    if (insertError) {
+                        console.error("Failed to self-heal profile in getCurrentUser:", insertError);
+                    } else if (newProfile) {
+                        profile = newProfile;
+                    } else {
+                        profile = {
+                            id: user.id,
+                            username: fallbackUsername,
+                            personal_best: 0
+                        };
+                    }
+                }
 
                 if (profile) {
                     this._currentUser = {
@@ -252,7 +302,8 @@ class _AuthSystem {
                     return this._currentUser;
                 }
                 return null;
-            } catch {
+            } catch (err) {
+                console.error("Error in getCurrentUser:", err);
                 return null;
             }
         } else {
@@ -288,13 +339,33 @@ class _AuthSystem {
                 if (!user) return false;
 
                 // Get current personal best
-                const { data: profile } = await supabase
+                const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('personal_best')
                     .eq('id', user.id)
-                    .single();
+                    .maybeSingle();
 
-                if (profile && score > (profile.personal_best || 0)) {
+                if (!profile) {
+                    // Profile is missing, self-heal and insert it with the score
+                    const fallbackUsername = user.user_metadata?.username || user.email.split('@')[0] || 'Player';
+                    const { error: insertError } = await supabase
+                        .from('profiles')
+                        .insert({
+                            id: user.id,
+                            username: fallbackUsername,
+                            personal_best: score
+                        });
+
+                    if (!insertError) {
+                        if (this._currentUser) {
+                            this._currentUser.personalBest = score;
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+
+                if (score > (profile.personal_best || 0)) {
                     const { error } = await supabase
                         .from('profiles')
                         .update({ personal_best: score })
@@ -308,7 +379,8 @@ class _AuthSystem {
                     }
                 }
                 return false;
-            } catch {
+            } catch (err) {
+                console.error("Error updating score in Supabase:", err);
                 return false;
             }
         } else {

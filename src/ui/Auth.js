@@ -131,10 +131,21 @@ export class Auth {
 
             if (res.success) {
                 if (res.needsVerification) {
-                    this._showError(res.message);
-                    // Switch tab to sign in so they can sign in after verifying their email
+                    this._showSuccess(res.message);
                     this._setTab('signin');
+                    this._inputPassword.value = '';
+                    this._inputUsername.value = '';
                 } else {
+                    const msg = this._activeTab === 'signup' 
+                        ? 'Account created successfully! Logging you in...' 
+                        : 'Signed in successfully! Loading game...';
+                    this._showSuccess(msg);
+                    submitBtn.disabled = true;
+                    this._submitText.textContent = 'REDIRECTING...';
+                    
+                    // 1.5s delay so user sees the success message
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
                     this.hide();
                     this._onSuccess();
                 }
@@ -144,19 +155,29 @@ export class Auth {
         } catch (err) {
             this._showError("A connection error occurred.");
         } finally {
-            submitBtn.disabled = false;
-            this._submitText.textContent = originalText;
+            // Only re-enable and restore button if we did not succeed and hide the overlay
+            const isHidden = !this.el.classList.contains('visible');
+            if (!isHidden) {
+                submitBtn.disabled = false;
+                this._submitText.textContent = originalText;
+            }
         }
     }
 
     _showError(msg) {
         this._errorBox.textContent = msg;
+        this._errorBox.classList.remove('success');
         this._errorBox.classList.add('visible');
+    }
+
+    _showSuccess(msg) {
+        this._errorBox.textContent = msg;
+        this._errorBox.classList.add('visible', 'success');
     }
 
     _clearError() {
         this._errorBox.textContent = '';
-        this._errorBox.classList.remove('visible');
+        this._errorBox.classList.remove('visible', 'success');
     }
 
     show() {

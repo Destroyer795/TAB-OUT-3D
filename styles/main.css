@@ -649,6 +649,13 @@ canvas {
     display: block;
 }
 
+.auth-error-box.success {
+    background: rgba(0, 255, 136, 0.08);
+    border-color: rgba(0, 255, 136, 0.3);
+    color: var(--c-accent);
+    animation: none;
+}
+
 @keyframes shakeError {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-6px); }
