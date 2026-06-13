@@ -14,8 +14,8 @@ class _SaveManager {
     /* ── Public API ────────────────────────────────────── */
 
     get highScore() {
-        // If a user is logged in, get their personal best. Otherwise fallback to global best.
-        const user = AuthSystem.getCurrentUser();
+        // Get personal best from cached user synchronously
+        const user = AuthSystem.getCachedUser();
         if (user) {
             return user.personalBest || 0;
         }
@@ -23,31 +23,27 @@ class _SaveManager {
     }
 
     set highScore(value) {
-        let isNewLocalBest = false;
         if (value > this._data.highScore) {
             this._data.highScore = value;
             this._persist();
-            isNewLocalBest = true;
         }
 
-        const user = AuthSystem.getCurrentUser();
-        if (user) {
-            AuthSystem.updateScore(value);
-        }
+        // Fire and forget updating the score
+        AuthSystem.updateScore(value);
     }
 
     /**
      * Submit a score; automatically updates high score if appropriate.
      * @param {number} score
-     * @returns {boolean} Whether a new high score was set.
+     * @returns {Promise<boolean>} Whether a new high score was set.
      */
-    submitScore(score) {
+    async submitScore(score) {
         let isNewBest = false;
         
-        // 1. Update user profile score
-        const user = AuthSystem.getCurrentUser();
+        // 1. Update user profile score in database
+        const user = await AuthSystem.getCurrentUser();
         if (user) {
-            isNewBest = AuthSystem.updateScore(score);
+            isNewBest = await AuthSystem.updateScore(score);
         }
 
         // 2. Also update global device high score

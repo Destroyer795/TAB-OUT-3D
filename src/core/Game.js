@@ -103,11 +103,7 @@ export class Game {
         window.addEventListener('resize', () => this._onResize());
 
         /* ── Start at Auth or Menu ────────────────────── */
-        if (AuthSystem.isLoggedIn()) {
-            this.menu.show();
-        } else {
-            this.auth.show();
-        }
+        this._initSession();
 
         /* ── Game loop ────────────────────────────────── */
         this._loop = this._loop.bind(this);
@@ -274,20 +270,33 @@ export class Game {
         this.fsm.reset();
     }
 
-    _signOutUser() {
-        AuthSystem.signOut();
+    async _initSession() {
+        try {
+            const user = await AuthSystem.getCurrentUser();
+            if (user) {
+                await this.menu.show();
+            } else {
+                this.auth.show();
+            }
+        } catch {
+            this.auth.show();
+        }
+    }
+
+    async _signOutUser() {
+        await AuthSystem.signOut();
         this.menu.hide();
         this.auth.show();
     }
 
-    _handleGameOver(type) {
+    async _handleGameOver(type) {
         AudioManager.playGameOver();
         this.hud.hide();
         this.boss.hide();
         this.lighting.stopWarning();
 
         const score = this.arcadeGame.score;
-        const isNew = SaveManager.submitScore(score);
+        const isNew = await SaveManager.submitScore(score);
         const best  = SaveManager.highScore;
 
         this.gameOver.show(type, score, best, isNew);

@@ -89,15 +89,15 @@ export class Menu {
     }
 
     /** Re-populate user details and leaderboard lists */
-    _refreshDetails() {
-        const user = AuthSystem.getCurrentUser();
+    async _refreshDetails() {
+        const user = await AuthSystem.getCurrentUser();
         if (user) {
             document.getElementById('menu-username').textContent = user.username;
             document.getElementById('menu-pb').textContent = user.personalBest || 0;
         }
 
         const leaderboardRows = document.getElementById('leaderboard-rows');
-        const list = AuthSystem.getLeaderboard();
+        const list = await AuthSystem.getLeaderboard();
 
         if (list.length === 0) {
             leaderboardRows.innerHTML = `<div class="leaderboard-empty">No scores recorded yet. Be the first!</div>`;
@@ -117,8 +117,8 @@ export class Menu {
         }
     }
 
-    show() {
-        this._refreshDetails();
+    async show() {
+        await this._refreshDetails();
         this.el.classList.add('visible');
         
         // Start ambience loop

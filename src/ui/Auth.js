@@ -106,7 +106,7 @@ export class Auth {
         }
     }
 
-    _handleSubmit(e) {
+    async _handleSubmit(e) {
         e.preventDefault();
         this._clearError();
         AudioManager.playButtonClick();
@@ -115,18 +115,31 @@ export class Auth {
         const passwordVal = this._inputPassword.value;
         const usernameVal = this._inputUsername.value;
 
-        let res;
-        if (this._activeTab === 'signin') {
-            res = AuthSystem.signIn(emailVal, passwordVal);
-        } else {
-            res = AuthSystem.signUp(usernameVal, emailVal, passwordVal);
-        }
+        // Visual feedback during request
+        const submitBtn = document.getElementById('auth-submit');
+        const originalText = this._submitText.textContent;
+        submitBtn.disabled = true;
+        this._submitText.textContent = 'CONNECTING...';
 
-        if (res.success) {
-            this.hide();
-            this._onSuccess();
-        } else {
-            this._showError(res.error);
+        try {
+            let res;
+            if (this._activeTab === 'signin') {
+                res = await AuthSystem.signIn(emailVal, passwordVal);
+            } else {
+                res = await AuthSystem.signUp(usernameVal, emailVal, passwordVal);
+            }
+
+            if (res.success) {
+                this.hide();
+                this._onSuccess();
+            } else {
+                this._showError(res.error);
+            }
+        } catch (err) {
+            this._showError("A connection error occurred.");
+        } finally {
+            submitBtn.disabled = false;
+            this._submitText.textContent = originalText;
         }
     }
 
