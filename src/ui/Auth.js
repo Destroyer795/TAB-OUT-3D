@@ -130,8 +130,14 @@ export class Auth {
             }
 
             if (res.success) {
-                this.hide();
-                this._onSuccess();
+                if (res.needsVerification) {
+                    this._showError(res.message);
+                    // Switch tab to sign in so they can sign in after verifying their email
+                    this._setTab('signin');
+                } else {
+                    this.hide();
+                    this._onSuccess();
+                }
             } else {
                 this._showError(res.error);
             }

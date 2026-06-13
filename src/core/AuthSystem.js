@@ -71,10 +71,15 @@ class _AuthSystem {
                     return { success: false, error: "Username is already taken" };
                 }
 
-                // Register user in Supabase Auth
+                // Register user in Supabase Auth, passing the username in metadata
                 const { data: authData, error: authError } = await supabase.auth.signUp({
                     email: mail,
-                    password: pwd
+                    password: pwd,
+                    options: {
+                        data: {
+                            username: uName
+                        }
+                    }
                 });
 
                 if (authError) {
@@ -85,18 +90,27 @@ class _AuthSystem {
                     return { success: false, error: "Signup completed, but verification may be required." };
                 }
 
-                // Insert profile entry
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .insert({
-                        id: authData.user.id,
-                        username: uName,
-                        personal_best: 0
-                    });
+                // If email confirmation is enabled, session will be null and the user must verify their email.
+                if (!authData.session) {
+                    return { 
+                        success: true, 
+                        needsVerification: true,
+                        message: "Verification link sent! Please check your email to complete registration, then sign in." 
+                    };
+                }
 
-                if (profileError) {
-                    // Try to clean up auth user if profile creation fails? Supabase doesn't easily allow client-side deletion.
-                    return { success: false, error: "Failed to create user profile: " + profileError.message };
+                // If session is active (email confirmation disabled), make a best-effort client profile insert
+                // (though the trigger will likely have already created it).
+                try {
+                    await supabase
+                        .from('profiles')
+                        .insert({
+                            id: authData.user.id,
+                            username: uName,
+                            personal_best: 0
+                        });
+                } catch (e) {
+                    // Ignore duplicate key or insert errors if the database trigger handled it
                 }
 
                 // Cache current user
