@@ -163,6 +163,10 @@ export class Game {
             AudioManager.playLaneSwitchSound();
         });
 
+        EventBus.on('arcadeCollect', () => {
+            AudioManager.playCollect();
+        });
+
         EventBus.on('productivityDepleted', () => {
             if (this.fsm.isActive) {
                 this.fsm.transition(GameState.GAMEOVER_PRODUCTIVITY);

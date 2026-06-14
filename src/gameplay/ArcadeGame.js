@@ -10,7 +10,7 @@ import EventBus from '../core/EventBus.js';
 
 const W = 1024;
 const H = 576;
-const LANE_COUNT = 3;
+const LANE_COUNT = 4;
 const LANE_WIDTH = 140;
 const LANES_TOTAL_WIDTH = LANE_COUNT * LANE_WIDTH;
 const LANES_X_OFFSET = (W - LANES_TOTAL_WIDTH) / 2;
@@ -26,16 +26,21 @@ export class ArcadeGame {
         this.collision = new CollisionSystem(LANE_WIDTH, 30);
 
         /* ── Ship state ───────────────────────────────── */
-        this.shipLane  = 1;            // 0, 1, 2
+        this.shipLane  = 1;            // 0, 1, 2, 3
         this.shipY     = H - 80;
         this.shipVisualX = this._laneX(1);
 
         /* ── Obstacle pool ────────────────────────────── */
-        /** @type {{ lane:number, y:number, height:number, width:number, passed:boolean, hue:number }[]} */
         this.obstacles = [];
 
+        /* ── Collectible pool ─────────────────────────── */
+        this.collectibles = [];
+        this.popups = [];
+        this.combo = 1;
+        this.collectTimer = 0;
+        this.collectInterval = 1.6;
+
         /* ── Particle pool ────────────────────────────── */
-        /** @type {{ x:number, y:number, vx:number, vy:number, life:number, maxLife:number, hue:number }[]} */
         this.particles = [];
 
         /* ── Gameplay vars ────────────────────────────── */
@@ -64,11 +69,16 @@ export class ArcadeGame {
         this.shipLane   = 1;
         this.shipVisualX = this._laneX(1);
         this.obstacles.length  = 0;
+        this.collectibles.length = 0;
+        this.popups.length = 0;
         this.particles.length  = 0;
+        this.combo        = 1;
         this.score        = 0;
         this.speed        = 250;
         this.spawnTimer   = 0;
         this.spawnInterval = 0.9;
+        this.collectTimer = 0;
+        this.collectInterval = 1.6;
         this.elapsedTime  = 0;
         this.alive        = true;
         this.screenShake  = 0;
@@ -99,6 +109,7 @@ export class ArcadeGame {
         // Gradually increase difficulty
         this.speed = 250 + this.elapsedTime * 8;
         this.spawnInterval = Math.max(0.35, 0.9 - this.elapsedTime * 0.008);
+        this.collectInterval = Math.max(0.7, 1.6 - this.elapsedTime * 0.01);
 
         // Ship visual interpolation
         const targetX = this._laneX(this.shipLane);
@@ -111,12 +122,19 @@ export class ArcadeGame {
             this._spawnObstacle();
         }
 
+        // Spawn collectibles
+        this.collectTimer += dt;
+        if (this.collectTimer >= this.collectInterval) {
+            this.collectTimer = 0;
+            this._spawnCollectible();
+        }
+
         // Move obstacles
         for (const obs of this.obstacles) {
             obs.y += this.speed * dt;
             if (!obs.passed && obs.y > this.shipY + 20) {
                 obs.passed = true;
-                this.score += 10;
+                this.score += 10 * this.combo;
                 EventBus.emit('arcadeScoreTick', { score: this.score });
             }
         }
@@ -124,13 +142,62 @@ export class ArcadeGame {
         // Remove off-screen obstacles
         this.obstacles = this.obstacles.filter(o => o.y < H + 60);
 
-        // Collision
+        // Move collectibles
+        for (const coll of this.collectibles) {
+            coll.y += this.speed * 0.85 * dt;
+            coll.pulsePhase += dt * 5;
+        }
+
+        // Check collectible collisions
+        for (let i = this.collectibles.length - 1; i >= 0; i--) {
+            const coll = this.collectibles[i];
+            const collX = LANES_X_OFFSET + coll.lane * LANE_WIDTH + LANE_WIDTH / 2;
+            const distY = Math.abs(coll.y - this.shipY);
+            const distX = Math.abs(this.shipVisualX - collX);
+            
+            if (distX < 50 && distY < 35) {
+                // Collected!
+                const points = 50 * this.combo;
+                this.score += points;
+                
+                EventBus.emit('arcadeCollect');
+                this._spawnCollectExplosion(collX, coll.y);
+                
+                this.popups.push({
+                    text: `+${points}`,
+                    x: collX,
+                    y: coll.y - 10,
+                    life: 0.6,
+                    maxLife: 0.6,
+                    combo: this.combo
+                });
+                
+                this.combo++;
+                this.collectibles.splice(i, 1);
+            }
+        }
+
+        // Remove off-screen collectibles
+        this.collectibles = this.collectibles.filter(c => c.y < H + 40);
+
+        // Update score popups
+        for (let i = this.popups.length - 1; i >= 0; i--) {
+            const popup = this.popups[i];
+            popup.y -= dt * 60;
+            popup.life -= dt;
+            if (popup.life <= 0) {
+                this.popups.splice(i, 1);
+            }
+        }
+
+        // Collision with obstacles
         const hit = this.collision.check(
             { lane: this.shipLane, y: this.shipY },
             this.obstacles
         );
         if (hit) {
             this.alive = false;
+            this.combo = 1; // reset combo
             this.screenShake = 0.5;
             this._spawnExplosion(this.shipVisualX, this.shipY);
             EventBus.emit('arcadeCollision', { score: this.score });
@@ -224,24 +291,80 @@ export class ArcadeGame {
 
         // ── Obstacles ────────────────────────────────
         for (const obs of this.obstacles) {
-            const ox = LANES_X_OFFSET + obs.lane * LANE_WIDTH + (LANE_WIDTH - obs.width) / 2;
+            const startLane = obs.startLane !== undefined ? obs.startLane : obs.lane;
+            const laneSpan  = obs.laneSpan !== undefined ? obs.laneSpan : 1;
+            
+            const pad = 15;
+            const ox = LANES_X_OFFSET + startLane * LANE_WIDTH + pad;
+            const oWidth = laneSpan * LANE_WIDTH - 2 * pad;
+
             // Glow
             ctx.shadowColor = `hsl(${obs.hue}, 100%, 60%)`;
             ctx.shadowBlur  = 15;
             ctx.fillStyle   = `hsl(${obs.hue}, 100%, 55%)`;
-            ctx.fillRect(ox, obs.y, obs.width, obs.height);
+            ctx.fillRect(ox, obs.y, oWidth, obs.height);
 
             // Inner detail
             ctx.shadowBlur = 0;
             ctx.fillStyle  = `hsl(${obs.hue}, 80%, 75%)`;
-            ctx.fillRect(ox + 4, obs.y + 4, obs.width - 8, obs.height - 8);
+            ctx.fillRect(ox + 4, obs.y + 4, oWidth - 8, obs.height - 8);
+
+            // Draw hazard stripes for multi-lane obstacles
+            if (laneSpan > 1) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(ox + 4, obs.y + 4, oWidth - 8, obs.height - 8);
+                ctx.clip();
+                
+                ctx.strokeStyle = `hsla(${obs.hue}, 100%, 30%, 0.45)`;
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                for (let sx = -50; sx < oWidth + 100; sx += 24) {
+                    ctx.moveTo(ox + sx, obs.y);
+                    ctx.lineTo(ox + sx + 20, obs.y + obs.height);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
 
             // Glitch lines
             ctx.fillStyle = `hsla(${obs.hue}, 100%, 90%, 0.4)`;
             for (let g = 0; g < 3; g++) {
                 const gy = obs.y + Math.random() * obs.height;
-                ctx.fillRect(ox, gy, obs.width, 1);
+                ctx.fillRect(ox, gy, oWidth, 1);
             }
+        }
+        ctx.shadowBlur = 0;
+
+        // ── Collectibles ─────────────────────────────
+        for (const coll of this.collectibles) {
+            const cx = LANES_X_OFFSET + coll.lane * LANE_WIDTH + LANE_WIDTH / 2;
+            const r = coll.radius + Math.sin(coll.pulsePhase) * 3;
+            
+            // Outer glow
+            ctx.shadowColor = `hsl(${coll.hue}, 100%, 60%)`;
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = `hsl(${coll.hue}, 100%, 55%)`;
+            
+            // Diamond shape
+            ctx.beginPath();
+            ctx.moveTo(cx, coll.y - r);
+            ctx.lineTo(cx + r, coll.y);
+            ctx.lineTo(cx, coll.y + r);
+            ctx.lineTo(cx - r, coll.y);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Inner core
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(cx, coll.y - r * 0.5);
+            ctx.lineTo(cx + r * 0.5, coll.y);
+            ctx.lineTo(cx, coll.y + r * 0.5);
+            ctx.lineTo(cx - r * 0.5, coll.y);
+            ctx.closePath();
+            ctx.fill();
         }
         ctx.shadowBlur = 0;
 
@@ -258,6 +381,21 @@ export class ArcadeGame {
             this._drawShip(ctx, this.shipVisualX, this.shipY);
         }
 
+        // ── Score popups ─────────────────────────────
+        ctx.textAlign = 'center';
+        for (const popup of this.popups) {
+            const alpha = popup.life / popup.maxLife;
+            ctx.fillStyle = `rgba(0, 255, 140, ${alpha})`;
+            ctx.font = `bold ${16 + (popup.combo > 1 ? 4 : 0)}px monospace`;
+            ctx.fillText(popup.text, popup.x, popup.y);
+            
+            if (popup.combo > 1) {
+                ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`;
+                ctx.font = `italic 11px monospace`;
+                ctx.fillText(`${popup.combo}X COMBO`, popup.x, popup.y + 14);
+            }
+        }
+
         // ── Score display ────────────────────────────
         ctx.font = 'bold 22px monospace';
         ctx.fillStyle = '#00ffb4';
@@ -267,10 +405,20 @@ export class ArcadeGame {
         ctx.fillText(`SCORE: ${this.score}`, W - 30, 35);
         ctx.shadowBlur = 0;
 
-        // Speed indicator
-        ctx.font = '14px monospace';
-        ctx.fillStyle = 'rgba(0,255,180,0.5)';
-        ctx.fillText(`SPD: ${Math.floor(this.speed)}`, W - 30, 55);
+        // Combo multiplier & speed display
+        if (this.combo > 1) {
+            ctx.font = 'bold 16px monospace';
+            ctx.fillStyle = '#ffc800';
+            ctx.fillText(`COMBO: x${this.combo}`, W - 30, 55);
+            
+            ctx.font = '14px monospace';
+            ctx.fillStyle = 'rgba(0,255,180,0.5)';
+            ctx.fillText(`SPD: ${Math.floor(this.speed)}`, W - 30, 75);
+        } else {
+            ctx.font = '14px monospace';
+            ctx.fillStyle = 'rgba(0,255,180,0.5)';
+            ctx.fillText(`SPD: ${Math.floor(this.speed)}`, W - 30, 55);
+        }
 
         // ── CRT Scanlines ────────────────────────────
         ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
@@ -304,15 +452,57 @@ export class ArcadeGame {
     }
 
     _spawnObstacle() {
-        const lane = randomInt(0, LANE_COUNT - 1);
+        const rand = Math.random();
+        let laneSpan = 1;
+        if (rand > 0.88) {
+            laneSpan = 3;
+        } else if (rand > 0.68) {
+            laneSpan = 2;
+        }
+
+        const startLane = randomInt(0, LANE_COUNT - laneSpan);
+        
+        let hue = 325; // Pink for 1-lane
+        if (laneSpan === 2) {
+            hue = 35; // Orange/Yellow for 2-lane
+        } else if (laneSpan === 3) {
+            hue = 190; // Cyan/Blue for 3-lane
+        }
+
         this.obstacles.push({
-            lane,
-            y: -50,
-            height: 28 + Math.random() * 18,
-            width:  70 + Math.random() * 40,
+            startLane,
+            laneSpan,
+            y: -60,
+            height: 32 + Math.random() * 16,
             passed: false,
-            hue: 320 + Math.random() * 30,  // pink range
+            hue,
         });
+    }
+
+    _spawnCollectible() {
+        const lane = randomInt(0, LANE_COUNT - 1);
+        this.collectibles.push({
+            lane,
+            y: -40,
+            radius: 14,
+            pulsePhase: Math.random() * Math.PI * 2,
+            hue: 120, // neon green
+        });
+    }
+
+    _spawnCollectExplosion(x, y) {
+        for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = randomRange(40, 150);
+            this.particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: randomRange(0.2, 0.5),
+                maxLife: 0.5,
+                hue: 120 + Math.random() * 20, // green/yellow-green
+            });
+        }
     }
 
     _drawShip(ctx, x, y) {

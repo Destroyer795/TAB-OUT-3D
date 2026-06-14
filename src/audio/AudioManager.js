@@ -164,6 +164,22 @@ class _AudioManager {
         this._osc('sine', 600, 0.12, 0.04);
     }
 
+    playCollect() {
+        if (!this._initialized) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, t); // B5
+        osc.frequency.setValueAtTime(1318.51, t + 0.08); // E6
+        g.gain.setValueAtTime(0.08, t);
+        g.gain.setValueAtTime(0.08, t + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        osc.connect(g).connect(this._masterGain);
+        osc.start(t);
+        osc.stop(t + 0.25);
+    }
+
     playLaneSwitchSound() {
         this._osc('sine', 523.25, 0.05, 0.05);
     }

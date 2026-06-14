@@ -21,7 +21,11 @@ export class CollisionSystem {
     check(ship, obstacles) {
         for (const obs of obstacles) {
             if (obs.passed) continue;
-            if (obs.lane !== ship.lane) continue;
+            
+            const startLane = obs.startLane !== undefined ? obs.startLane : obs.lane;
+            const laneSpan  = obs.laneSpan !== undefined ? obs.laneSpan : 1;
+            
+            if (ship.lane < startLane || ship.lane >= startLane + laneSpan) continue;
 
             const shipTop    = ship.y - this.shipHeight / 2;
             const shipBottom = ship.y + this.shipHeight / 2;

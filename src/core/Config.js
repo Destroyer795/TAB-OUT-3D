@@ -4,6 +4,6 @@
  */
 
 export const CONFIG = {
-    supabaseUrl: 'YOUR_SUPABASE_URL',
-    supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY'
+    supabaseUrl: 'https://vlwsogurbdlvehixfbhg.supabase.co',
+    supabaseAnonKey: 'sb_publishable_qM0NT0uLTuroYSnB3FY1EQ_fZHXyIWn'
 };
