@@ -878,64 +878,231 @@ export class OfficeScene {
     }
 
     _createLamp(x, y, z) {
+        // Materials
         const metalMat = new THREE.MeshStandardMaterial({
-            color: 0x1e293b, // Matte dark slate/black
-            roughness: 0.5,
-            metalness: 0.6,
+            color: 0x111827, // Glossy deep black/charcoal
+            roughness: 0.3,
+            metalness: 0.85,
         });
 
-        // Sleek round base
-        const base = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 0.015, 12),
+        const chromeMat = new THREE.MeshStandardMaterial({
+            color: 0xe2e8f0, // Polished chrome for accent joints/rods
+            roughness: 0.15,
+            metalness: 0.95,
+        });
+
+        const copperMat = new THREE.MeshStandardMaterial({
+            color: 0xb45309, // Polished copper for hinges/springs
+            roughness: 0.2,
+            metalness: 0.9,
+        });
+
+        const bulbMat = new THREE.MeshStandardMaterial({
+            color: 0xe2e8f0, // Unlit bulb
+            roughness: 0.5,
+        });
+
+        const lampGroup = new THREE.Group();
+        lampGroup.position.set(x, y, z);
+
+        // 1. Double-tiered beveled base
+        const baseBottom = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.085, 0.012, 16),
             metalMat
         );
-        base.position.set(x, y + 0.008, z);
-        this.group.add(base);
+        baseBottom.position.y = 0.006;
+        lampGroup.add(baseBottom);
 
-        // Lower arm segment (angled)
-        const lowerArm = new THREE.Mesh(
-            new THREE.BoxGeometry(0.016, 0.22, 0.016),
+        const baseTop = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.06, 0.01, 16),
             metalMat
         );
-        lowerArm.position.set(x - 0.03, y + 0.11, z);
-        lowerArm.rotation.z = 0.25; // Leaning inward
-        this.group.add(lowerArm);
+        baseTop.position.y = 0.017;
+        lampGroup.add(baseTop);
 
-        // Elbow joint sphere
-        const joint = new THREE.Mesh(
-            new THREE.SphereGeometry(0.02, 8, 8),
+        // 2. Base joint bracket
+        const baseBracket = new THREE.Group();
+        baseBracket.position.y = 0.022;
+        lampGroup.add(baseBracket);
+
+        const bracketMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02, 0.024, 0.02),
             metalMat
         );
-        joint.position.set(x - 0.05, y + 0.22, z);
-        this.group.add(joint);
+        bracketMesh.position.y = 0.012;
+        baseBracket.add(bracketMesh);
 
-        // Upper arm segment (angled back over the desk)
-        const upperArm = new THREE.Mesh(
-            new THREE.BoxGeometry(0.016, 0.2, 0.016),
+        const basePin = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.006, 0.006, 0.032, 8),
+            chromeMat
+        );
+        basePin.rotation.x = Math.PI / 2;
+        basePin.position.y = 0.018;
+        baseBracket.add(basePin);
+
+        // 3. Lower arm group (rotates around the base pin)
+        const lowerArm = new THREE.Group();
+        lowerArm.position.set(0, 0.018, 0);
+        lowerArm.rotation.z = 0.25; // Leaning inward/left
+        baseBracket.add(lowerArm);
+
+        // Twin parallel rods (lower arm)
+        const lowerRodGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.22, 8);
+        
+        const leftLowerRod = new THREE.Mesh(lowerRodGeo, chromeMat);
+        leftLowerRod.position.set(0, 0.11, -0.012);
+        lowerArm.add(leftLowerRod);
+
+        const rightLowerRod = new THREE.Mesh(lowerRodGeo, chromeMat);
+        rightLowerRod.position.set(0, 0.11, 0.012);
+        lowerArm.add(rightLowerRod);
+
+        // Diagonal bracing bar between rods
+        const crossBrace = new THREE.Mesh(
+            new THREE.BoxGeometry(0.003, 0.15, 0.003),
             metalMat
         );
-        upperArm.position.set(x - 0.1, y + 0.29, z);
-        upperArm.rotation.z = -0.55; // Reaching over desk
-        this.group.add(upperArm);
+        crossBrace.rotation.z = -0.4;
+        crossBrace.position.set(0, 0.11, 0);
+        lowerArm.add(crossBrace);
 
-        // Sleek modern horizontal head
-        const head = new THREE.Mesh(
-            new THREE.BoxGeometry(0.24, 0.025, 0.07),
+        // Small tension springs for retro-mechanical look
+        const springGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.08, 8);
+        const springMat = new THREE.MeshStandardMaterial({
+            color: 0x64748b,
+            roughness: 0.4,
+            metalness: 0.8
+        });
+        const leftSpring = new THREE.Mesh(springGeo, springMat);
+        leftSpring.position.set(-0.01, 0.06, -0.012);
+        leftSpring.rotation.z = 0.15;
+        lowerArm.add(leftSpring);
+
+        const rightSpring = new THREE.Mesh(springGeo, springMat);
+        rightSpring.position.set(-0.01, 0.06, 0.012);
+        rightSpring.rotation.z = 0.15;
+        lowerArm.add(rightSpring);
+
+        // 4. Elbow joint (positioned at the top of the lower arm)
+        const elbowJoint = new THREE.Group();
+        elbowJoint.position.set(0, 0.22, 0);
+        elbowJoint.rotation.z = 0.35; // Leaning further left relative to lower arm
+        lowerArm.add(elbowJoint);
+
+        // Elbow joint plates (left and right)
+        const elbowPlateGeo = new THREE.CylinderGeometry(0.014, 0.014, 0.006, 12);
+        const leftElbowPlate = new THREE.Mesh(elbowPlateGeo, metalMat);
+        leftElbowPlate.rotation.x = Math.PI / 2;
+        leftElbowPlate.position.z = -0.016;
+        elbowJoint.add(leftElbowPlate);
+
+        const rightElbowPlate = new THREE.Mesh(elbowPlateGeo, metalMat);
+        rightElbowPlate.rotation.x = Math.PI / 2;
+        rightElbowPlate.position.z = 0.016;
+        elbowJoint.add(rightElbowPlate);
+
+        // Central elbow pin
+        const elbowPin = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.006, 0.006, 0.038, 8),
+            copperMat
+        );
+        elbowPin.rotation.x = Math.PI / 2;
+        elbowJoint.add(elbowPin);
+
+        // 5. Upper arm group
+        const upperArm = new THREE.Group();
+        // Twin parallel rods (upper arm)
+        const upperRodGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.2, 8);
+        
+        const leftUpperRod = new THREE.Mesh(upperRodGeo, chromeMat);
+        leftUpperRod.position.set(0, 0.1, -0.009);
+        upperArm.add(leftUpperRod);
+
+        const rightUpperRod = new THREE.Mesh(upperRodGeo, chromeMat);
+        rightUpperRod.position.set(0, 0.1, 0.009);
+        upperArm.add(rightUpperRod);
+
+        elbowJoint.add(upperArm);
+
+        // Upper arm tension spring
+        const upperSpring = new THREE.Mesh(springGeo, springMat);
+        upperSpring.position.set(0.01, 0.08, 0);
+        upperSpring.rotation.z = -0.1;
+        upperArm.add(upperSpring);
+
+        // 6. Head joint (at the top of the upper arm)
+        const headJoint = new THREE.Group();
+        headJoint.position.set(0, 0.2, 0);
+        headJoint.rotation.z = -0.6; // Counter-rotate so head points straight down
+        upperArm.add(headJoint);
+
+        const headBracket = new THREE.Mesh(
+            new THREE.BoxGeometry(0.014, 0.02, 0.024),
             metalMat
         );
-        head.position.set(x - 0.18, y + 0.38, z);
-        head.rotation.z = -0.1;
-        this.group.add(head);
+        headJoint.add(headBracket);
 
-        // Glowing light emitter under the head
-        const glowMat = new THREE.MeshBasicMaterial({ color: 0xfffee0 });
-        const glow = new THREE.Mesh(
-            new THREE.BoxGeometry(0.22, 0.005, 0.06),
-            glowMat
+        const headPin = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.005, 0.005, 0.03, 8),
+            copperMat
         );
-        glow.position.set(x - 0.18, y + 0.365, z);
-        glow.rotation.z = -0.1;
-        this.group.add(glow);
+        headPin.rotation.x = Math.PI / 2;
+        headJoint.add(headPin);
+
+        // 7. Lamp shade assembly (pointing along -Y locally)
+        const shadeGroup = new THREE.Group();
+        shadeGroup.position.set(0, -0.01, 0);
+        headJoint.add(shadeGroup);
+
+        // Flared cone shade
+        const shadeCone = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.025, 0.075, 0.09, 16, 1, true),
+            metalMat
+        );
+        shadeCone.position.y = -0.045;
+        
+        // Interior of shade (creamy off-white)
+        const interiorMat = new THREE.MeshStandardMaterial({
+            color: 0xfffbeb,
+            roughness: 0.5,
+            side: THREE.BackSide
+        });
+        const shadeConeInterior = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.024, 0.074, 0.088, 16, 1, true),
+            interiorMat
+        );
+        shadeConeInterior.position.y = -0.045;
+        shadeGroup.add(shadeCone);
+        shadeGroup.add(shadeConeInterior);
+
+        // Closed cap at the top of the shade cone
+        const shadeCap = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.026, 0.026, 0.01, 16),
+            metalMat
+        );
+        shadeCap.position.y = 0.005;
+        shadeGroup.add(shadeCap);
+
+        // Polished switch pin
+        const switchPin = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.004, 0.004, 0.012, 8),
+            chromeMat
+        );
+        switchPin.position.y = 0.013;
+        shadeGroup.add(switchPin);
+
+        // Unlit light bulb inside
+        const bulb = new THREE.Mesh(
+            new THREE.SphereGeometry(0.018, 12, 12),
+            bulbMat
+        );
+        bulb.position.y = -0.05;
+        shadeGroup.add(bulb);
+
+        // Lighting effects disabled per user request
+
+        // Add the entire lamp assembly to the scene group
+        this.group.add(lampGroup);
     }
 
     _createNotebook(x, y, z) {
