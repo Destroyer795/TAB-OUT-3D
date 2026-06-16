@@ -787,6 +787,28 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* Custom scrollbar for leaderboard */
+.leaderboard-rows::-webkit-scrollbar {
+    width: 4px;
+}
+
+.leaderboard-rows::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
+.leaderboard-rows::-webkit-scrollbar-thumb {
+    background: rgba(0, 204, 255, 0.3);
+    border-radius: 4px;
+}
+
+.leaderboard-rows::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 204, 255, 0.5);
 }
 
 .leaderboard-row {
