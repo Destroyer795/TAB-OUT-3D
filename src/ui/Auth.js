@@ -130,25 +130,18 @@ export class Auth {
             }
 
             if (res.success) {
-                if (res.needsVerification) {
-                    this._showSuccess(res.message);
-                    this._setTab('signin');
-                    this._inputPassword.value = '';
-                    this._inputUsername.value = '';
-                } else {
-                    const msg = this._activeTab === 'signup' 
-                        ? 'Account created successfully! Logging you in...' 
-                        : 'Signed in successfully! Loading game...';
-                    this._showSuccess(msg);
-                    submitBtn.disabled = true;
-                    this._submitText.textContent = 'REDIRECTING...';
-                    
-                    // 1.5s delay so user sees the success message
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                    
-                    this.hide();
-                    this._onSuccess();
-                }
+                const msg = this._activeTab === 'signup' 
+                    ? 'Account created successfully! Logging you in...' 
+                    : 'Signed in successfully! Loading game...';
+                this._showSuccess(msg);
+                submitBtn.disabled = true;
+                this._submitText.textContent = 'REDIRECTING...';
+                
+                // 1.5s delay so user sees the success message
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                this.hide();
+                this._onSuccess();
             } else {
                 this._showError(res.error);
             }

@@ -87,28 +87,20 @@ class _AuthSystem {
                 }
 
                 if (!authData.user) {
-                    return { success: false, error: "Signup completed, but verification may be required." };
+                    return { success: false, error: "Signup failed. Please try again." };
                 }
 
-                // If email confirmation is enabled, session will be null and the user must verify their email.
-                if (!authData.session) {
-                    return { 
-                        success: true, 
-                        needsVerification: true,
-                        message: "Verification link sent! Please check your email to complete registration, then sign in." 
-                    };
-                }
-
-                // If session is active (email confirmation disabled), make a best-effort client profile insert
-                // (though the trigger will likely have already created it).
+                // Make a best-effort client profile insert with email
+                // (the database trigger may have already created it without email)
                 try {
                     await supabase
                         .from('profiles')
-                        .insert({
+                        .upsert({
                             id: authData.user.id,
                             username: uName,
+                            email: mail,
                             personal_best: 0
-                        });
+                        }, { onConflict: 'id' });
                 } catch (e) {
                     // Ignore duplicate key or insert errors if the database trigger handled it
                 }
@@ -156,7 +148,7 @@ class _AuthSystem {
      * @returns {Promise<{success: boolean, error?: string}>}
      */
     async signIn(email, password) {
-        const mail = email.trim().toLowerCase();
+        let mail = email.trim().toLowerCase();
         const pwd = password;
 
         if (!mail || !pwd) {
@@ -165,6 +157,21 @@ class _AuthSystem {
 
         if (supabase) {
             try {
+                // If the identifier doesn't contain '@', treat it as a username
+                // and resolve the email from the profiles table
+                if (!mail.includes('@')) {
+                    const { data: profileMatch, error: lookupError } = await supabase
+                        .from('profiles')
+                        .select('email')
+                        .ilike('username', mail)
+                        .maybeSingle();
+
+                    if (lookupError || !profileMatch || !profileMatch.email) {
+                        return { success: false, error: "Username not found. Please sign up first." };
+                    }
+                    mail = profileMatch.email;
+                }
+
                 // Log in via Supabase Auth
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email: mail,
@@ -190,6 +197,7 @@ class _AuthSystem {
                         .insert({
                             id: authData.user.id,
                             username: fallbackUsername,
+                            email: mail,
                             personal_best: 0
                         })
                         .select()
@@ -204,6 +212,12 @@ class _AuthSystem {
                         username: fallbackUsername,
                         personal_best: 0
                     };
+                } else if (!profile.email) {
+                    // Self-heal: backfill email for existing profiles that don't have it
+                    await supabase
+                        .from('profiles')
+                        .update({ email: mail })
+                        .eq('id', authData.user.id);
                 }
 
                 this._currentUser = {
@@ -275,6 +289,7 @@ class _AuthSystem {
                         .insert({
                             id: user.id,
                             username: fallbackUsername,
+                            email: user.email,
                             personal_best: 0
                         })
                         .select()
@@ -291,6 +306,12 @@ class _AuthSystem {
                             personal_best: 0
                         };
                     }
+                } else if (!profile.email && user.email) {
+                    // Self-heal: backfill email for existing profiles
+                    await supabase
+                        .from('profiles')
+                        .update({ email: user.email })
+                        .eq('id', user.id);
                 }
 
                 if (profile) {
