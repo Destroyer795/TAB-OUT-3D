@@ -30,45 +30,54 @@ export class Menu {
 
                 <!-- User Welcome Banner -->
                 <div class="menu-user-banner">
-                    <div class="user-greeting">
-                        Welcome, <span id="menu-username" class="user-highlight">Agent</span>!
-                    </div>
-                    <div class="user-pb">
-                        Personal Best: <span id="menu-pb" class="pb-highlight">0</span> pts
+                    <div class="user-info">
+                        <div class="user-greeting">
+                            OPERATIVE: <span id="menu-username" class="user-highlight">Agent</span>
+                        </div>
+                        <div class="user-pb">
+                            RECORD: <span id="menu-pb" class="pb-highlight">0</span> <span class="pb-unit">PTS</span>
+                        </div>
                     </div>
                     <button class="menu-btn menu-btn-secondary sign-out-btn" id="btn-signout">
-                        SIGN OUT
+                        DISCONNECT
                     </button>
                 </div>
 
                 <div class="menu-instructions">
                     <div class="instruction-row">
-                        <span class="key">←  →</span>
-                        <span>Move ship between lanes</span>
+                        <span class="key">← → / A D</span>
+                        <span>Move ship & dodge barriers</span>
                     </div>
                     <div class="instruction-row">
-                        <span class="key">SPACE</span>
-                        <span>Hold to hide arcade / show spreadsheet</span>
+                        <span class="key">HOLD SPACE</span>
+                        <span>Camouflage & crunch ledger</span>
                     </div>
                     <div class="instruction-row">
-                        <span class="key">ESC</span>
-                        <span>Pause / Return to menu</span>
+                        <span class="key">C KEY</span>
+                        <span>Energy coffee boost</span>
+                    </div>
+                    <div class="instruction-row">
+                        <span class="key">P / ESC</span>
+                        <span>Pause operations</span>
                     </div>
                 </div>
 
                 <!-- Leaderboard Widget -->
                 <div class="menu-leaderboard">
-                    <h3 class="leaderboard-title">🏆 OFFICE LEADERBOARD</h3>
+                    <div class="leaderboard-title">
+                        <span class="terminal-dot"></span>
+                        <span>TOP SYSTEM OPERATORS</span>
+                    </div>
                     <div class="leaderboard-rows" id="leaderboard-rows">
                         <!-- Populated dynamically on show() -->
                     </div>
                 </div>
 
-                <p class="menu-tip">Play the arcade game to score points — but hide it before the boss sees! Hiding drains your productivity, so don't stay hidden too long.</p>
+                <p class="menu-tip">Piloting through digital firewall corridors. When surveillance approaches, hold SPACE to camouflage as spreadsheet data.</p>
 
                 <button class="menu-btn" id="btn-start" style="width: 100%; max-width: 320px; margin-top: 12px;">
                     <span class="btn-glow"></span>
-                    START GAME
+                    INITIALIZE RUN
                 </button>
             </div>
         `;
@@ -103,14 +112,15 @@ export class Menu {
             leaderboardRows.innerHTML = `<div class="leaderboard-empty">No scores recorded yet. Be the first!</div>`;
         } else {
             leaderboardRows.innerHTML = list.map((item, index) => {
-                const rankText = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                const rankNum = String(index + 1).padStart(2, '0');
+                const rankClass = index === 0 ? 'rank-gold' : index === 1 ? 'rank-silver' : index === 2 ? 'rank-bronze' : 'rank-standard';
                 const isCurrentUser = user && item.username === user.username;
                 const highlightClass = isCurrentUser ? 'leaderboard-row-self' : '';
                 return `
                     <div class="leaderboard-row ${highlightClass}">
-                        <span class="rank">${rankText}</span>
+                        <span class="rank-badge ${rankClass}">${rankNum}</span>
                         <span class="username">${item.username}</span>
-                        <span class="score">${item.personalBest} pts</span>
+                        <span class="score">${item.personalBest} <span class="score-unit">PTS</span></span>
                     </div>
                 `;
             }).join('');
@@ -120,19 +130,12 @@ export class Menu {
     async show() {
         await this._refreshDetails();
         this.el.classList.add('visible');
-        
-        // Start ambience loop
-        if (this._ambienceInterval) {
-            clearInterval(this._ambienceInterval);
-        }
-        this._ambienceInterval = setInterval(() => {
-            AudioManager.playMenuAmbience();
-        }, 3500);
-        AudioManager.playMenuAmbience();
+        AudioManager.startBgm('menu');
     }
 
     hide() {
         this.el.classList.remove('visible');
+        AudioManager.stopBgm();
         if (this._ambienceInterval) {
             clearInterval(this._ambienceInterval);
             this._ambienceInterval = null;

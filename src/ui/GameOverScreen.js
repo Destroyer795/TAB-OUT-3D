@@ -33,9 +33,16 @@ export class GameOverScreen {
                         <span class="go-value go-best" id="go-best">0</span>
                     </div>
                 </div>
-                <div class="go-new-best" id="go-new-best">🏆 NEW HIGH SCORE!</div>
+                <div class="go-rank-block">
+                    <span class="go-rank-label">FINAL POSITION</span>
+                    <span class="go-rank-val" id="go-rank"><span class="go-rank-chip">LVL 01</span> Intern</span>
+                </div>
+                <div class="go-new-best" id="go-new-best">
+                    <span class="new-record-chip">NEW RECORD</span>
+                    <span>PERSONAL BEST ACHIEVED</span>
+                </div>
                 <div class="go-buttons">
-                    <button class="menu-btn go-btn" id="btn-retry">TRY AGAIN</button>
+                    <button class="menu-btn go-btn" id="btn-retry">START NEW SHIFT</button>
                     <button class="menu-btn go-btn go-btn-secondary" id="btn-menu">MAIN MENU</button>
                 </div>
             </div>
@@ -62,39 +69,44 @@ export class GameOverScreen {
      * @param {number} best
      * @param {boolean} isNewBest
      */
-    show(type, score, best, isNewBest) {
+    show(type, score, best, isNewBest, rankTitle = 'Unpaid Intern', rankIcon = 'LVL 01') {
         const configs = {
             fired: {
-                icon: '👔',
-                title: 'BUSTED!',
-                reason: 'You were caught playing games at work!',
-                color: '#ff1744',
+                icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="1" fill="#f43f5e"/></svg>',
+                title: 'SURVEILLANCE BREACH',
+                reason: 'Boss surveillance camera identified unauthorized arcade operations.',
+                color: '#f43f5e',
             },
             productivity: {
-                icon: '📉',
-                title: 'TERMINATED!',
-                reason: 'HR fired you for total inactivity!',
-                color: '#ff9100',
+                icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>',
+                title: 'PRODUCTIVITY COLLAPSE',
+                reason: 'Audit ledger neglected. Corporate productivity dropped to zero.',
+                color: '#f59e0b',
             },
             crash: {
-                icon: '💥',
-                title: 'CRASHED!',
-                reason: 'Your ship smashed into a glitch block!',
-                color: '#d500f9',
+                icon: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+                title: 'KINETIC COLLISION',
+                reason: 'Vessel was annihilated by an active firewall glitch barrier.',
+                color: '#00d2ff',
             },
         };
 
         const cfg = configs[type] || configs.crash;
 
-        document.getElementById('go-icon').textContent = cfg.icon;
+        document.getElementById('go-icon').innerHTML = cfg.icon;
         document.getElementById('go-title').textContent = cfg.title;
         document.getElementById('go-title').style.color = cfg.color;
         document.getElementById('go-reason').textContent = cfg.reason;
         document.getElementById('go-score').textContent = score;
         document.getElementById('go-best').textContent = best;
 
+        const rankEl = document.getElementById('go-rank');
+        if (rankEl) {
+            rankEl.innerHTML = `<span class="go-rank-chip">${rankIcon}</span> <span>${rankTitle}</span>`;
+        }
+
         const newBestEl = document.getElementById('go-new-best');
-        newBestEl.style.display = isNewBest ? 'block' : 'none';
+        newBestEl.style.display = isNewBest ? 'flex' : 'none';
 
         this.el.classList.add('visible');
     }

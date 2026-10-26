@@ -1,37 +1,76 @@
-# TAB-OUT 3D
+# TAB-OUT 3D ⚡
 
-TAB-OUT 3D is a stealth arcade experience set in a simulated 3D corporate office environment. Players control a fast-paced lane-switching arcade game on their virtual monitor while keeping an eye out for the boss patrolling the corridors.
+TAB-OUT 3D is a stealth arcade experience set in a simulated 3D corporate office environment. Players control a fast-paced cyberpunk lane runner on their virtual workstation monitor while dodging the eagle eye of the roaming corporate boss.
 
-## Gameplay Mechanics
+---
 
-* Stealth Action: Play the arcade game to accumulate points, but hold Space to quickly switch your monitor to a spreadsheet when the boss approaches.
-* Productivity System: Hiding from the boss drains your productivity. You must balance stealth with actual arcade gameplay to prevent being terminated by HR.
-* Boss AI: The boss walks through the office looking at employee monitors. If the boss catches you playing, you are fired.
+## 🎮 What Makes It 1000x Better?
 
-## Key Features
+### 🛡️ Cyber Runner 2.0 (Arcade Overhaul)
+* **Power-Ups System**:
+  * 🛡️ **Holographic Shield**: Absorbs a collision crash with an energy shatter effect.
+  * ⚡ **Overclock (Nitro Boost)**: 3x score multiplier, invulnerability, trail distortion, demolishes obstacles in your path!
+  * 🧲 **Data Magnet**: Attracts nearby floating data chips across lanes.
+  * 💣 **EMP Glitch Bomb**: Clears all barriers on the monitor in a digital shockwave.
+  * ☕ **Espresso Drop**: Restores employee productivity on the fly!
+* **Ship Aerodynamic Banking**: Ship smoothly banks and tilts dynamically into turns.
+* **Diverse Hazards**: Shifting glitch barriers, hazard-striped laser gates, and speed-ramping difficulty.
+* **CRT Phosphor Glow**: Realistic scanlines, curved monitor vignette, and floating combo multipliers.
 
-* Autonomous Employees: Background characters walk corridors, return to desks, steer around each other using local obstacle avoidance, and dynamically turn their heads to look around.
-* Facial Expressions: Employees feature procedural animation including Y-axis eye scaling for blinking, focused squints during typing, mouth movement during chatting gestures, and wide-eyed panic expressions when the boss is visible.
-* Account Registration: A built-in user system allows creating accounts with unique usernames, emails, and passwords.
-* Local Leaderboards: Ranks the top five employee high scores, persisting data locally in the browser.
-* Authentic Sounds: Dynamic audio effects for UI button hover and clicks, arcade lane switches, collision feedback, and warning alarms.
+### 👁️ Dynamic Suspicion & Stealth Tension
+* **Boss Suspicion Meter**: Instead of unfair instant-kills, looking at your monitor charges a heart-pounding Suspicion Eye meter.
+* **Heartbeat Audio**: Sub-bass tension heartbeats quicken as the boss draws near.
+* **Close Call Rewards**: Tabbing out just in the nick of time (>55% suspicion) triggers a **"CLOSE CALL! +250 PTS"** bonus with a sigh of relief!
+* **Surveillance Webcam**: Physical webcam on your monitor with a live LED indicator that pulses red during boss patrols.
+* **Boss Inspection Pauses**: Boss occasionally pauses right outside your cubicle and turns his head to inspect your desk.
 
-## Controls
+### ⌨️ Interactive "Number Crunching" Spreadsheet Mode
+* Hiding is no longer passive waiting! Typing any keys while hiding in Spreadsheet Mode crunches financial formulas (`=SYNERGY()`, `=EBITDA()`).
+* Mechanical keyboard click-clack sounds on every keystroke.
+* Live reactive financial bar charts and floating profit popups (`+$24,500 EBITDA!`).
+* **Active Productivity Recovery**: Crunching numbers actively replenishes your productivity bar!
 
-* Left and Right Arrow Keys: Move ship between lanes.
-* Spacebar: Hold to hide the arcade game and show the work spreadsheet. Release to return to the game.
-* Escape Key: Pause the gameplay or return to the main menu.
+### ☕ Desk Coffee Mug Interaction
+* Steaming 3D coffee mug sits on your desk.
+* Press **C** or click the HUD button to drink coffee!
+* Restores +35% productivity and gives an instant energy boost with gulp SFX.
 
-## How to Run Locally
+### 🎵 Procedural Synthwave Audio & Spatial Audio
+* **Procedural 80s Cyberpunk Soundtrack**: Real-time arpeggiated basslines, chord pads, and retro beats generated via Web Audio API.
+* **Headphone Muffle Filter**: Switching to the spreadsheet triggers a 400Hz lowpass filter, realistically muffling your arcade music like leaked sound from headphones!
+* **3D Spatial Footsteps**: Boss footsteps dynamically pan across stereo channels based on his exact corridor coordinates.
 
-Since the game is built using native browser ES modules, it must be run from a local web server to avoid browser cross-origin policy blocks.
+### 👔 Corporate Career Ladder & Achievements
+* Climb the ranks from **Unpaid Intern** (0 pts) to **Chief Executive Gamer (CEO)** (20,000 pts) with celebratory promotion toasts!
+* Real-time achievement unlocks: *Nerve of Steel*, *Caffeine Overdrive*, *Wall Street Wizard*, and *Flow State*.
+
+### ⚡ Instant Guest Play
+* Jump straight into the game with 1 click using **Quick Play as Guest**, or log in to sync high scores globally.
+
+---
+
+## 🕹️ Controls
+
+| Key | Action |
+| --- | --- |
+| **← →** or **A / D** | Steer Cyber Ship between lanes |
+| **HOLD SPACE** | Tab out to Spreadsheet & Crunch numbers |
+| **Any Typing Keys** | Crunch numbers & boost productivity (while hiding) |
+| **C** or Click Mug | Drink coffee (+35% Productivity) |
+| **P** or **ESC** | Pause shift & Audio options |
+
+---
+
+## 🚀 How to Run Locally
+
+Since the game is built using native browser ES modules, it must be run from a local web server:
 
 1. Open your terminal in the project directory.
-2. Start a local server. For example, using Python:
+2. Start a local server:
    ```bash
    python -m http.server 8080
    ```
-3. Open your web browser and navigate to:
+3. Open your browser and navigate to:
    ```
    http://localhost:8080
    ```
