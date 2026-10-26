@@ -1,8 +1,10 @@
 /**
- * Monitor.js – The in-game computer monitor with CanvasTexture.
+ * Monitor.js – The in-game computer monitor with CanvasTexture and Surveillance Webcam.
  *
  * Owns the off-screen <canvas> and updates the Three.js CanvasTexture.
- * The ArcadeGame and SpreadsheetMode render into the same canvas.
+ * Features:
+ *  - High-res CanvasTexture.
+ *  - Surveillance webcam with dynamic LED indicator that blinks red when boss is watching!
  */
 
 import * as THREE from 'three';
@@ -30,6 +32,8 @@ export class Monitor {
 
         // Monitor group
         this.group = new THREE.Group();
+        this._ledBlinkTimer = 0;
+        this._ledState = 'normal'; // 'normal' | 'warning' | 'alert'
 
         this._build();
         this.scene.add(this.group);
@@ -85,6 +89,58 @@ export class Monitor {
         const base = new THREE.Mesh(baseGeo, bezelMat);
         base.position.set(0, 0.84, -1.1);
         this.group.add(base);
+
+        // ── Surveillance Webcam on Top Bezel ─────────
+        const camBodyGeo = new THREE.BoxGeometry(0.12, 0.038, 0.06);
+        const camBodyMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.4, metalness: 0.6 });
+        const camMesh = new THREE.Mesh(camBodyGeo, camBodyMat);
+        camMesh.position.set(0, 2.155, -1.07);
+        this.group.add(camMesh);
+
+        // Webcam Glass Lens
+        const lensGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.02, 12);
+        const lensMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.9 });
+        const lensMesh = new THREE.Mesh(lensGeo, lensMat);
+        lensMesh.rotation.x = Math.PI / 2;
+        lensMesh.position.set(0, 2.155, -1.038);
+        this.group.add(lensMesh);
+
+        // Surveillance LED Indicator
+        const ledGeo = new THREE.SphereGeometry(0.006, 8, 8);
+        this._ledMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+        this._ledMesh = new THREE.Mesh(ledGeo, this._ledMat);
+        this._ledMesh.position.set(0.038, 2.155, -1.038);
+        this.group.add(this._ledMesh);
+    }
+
+    /**
+     * Set the status of the surveillance webcam LED.
+     * @param {'normal' | 'warning' | 'alert'} state
+     */
+    setLedState(state) {
+        this._ledState = state;
+        if (state === 'normal') {
+            this._ledMat.color.set(0x00ff88);
+        } else if (state === 'warning') {
+            this._ledMat.color.set(0xffab00);
+        } else if (state === 'alert') {
+            this._ledMat.color.set(0xff1744);
+        }
+    }
+
+    update(dt) {
+        // Fast pulse when alert or warning
+        if (this._ledState === 'alert') {
+            this._ledBlinkTimer += dt * 16;
+            const on = Math.sin(this._ledBlinkTimer) > 0;
+            this._ledMat.color.set(on ? 0xff1744 : 0x4a0000);
+        } else if (this._ledState === 'warning') {
+            this._ledBlinkTimer += dt * 8;
+            const on = Math.sin(this._ledBlinkTimer) > 0;
+            this._ledMat.color.set(on ? 0xffab00 : 0x5a3000);
+        } else {
+            this._ledMat.color.set(0x00ff88);
+        }
     }
 
     /** Mark the texture as needing update. */
@@ -100,6 +156,7 @@ export class Monitor {
     dispose() {
         this.texture.dispose();
         this._screenMat.dispose();
+        this._ledMat.dispose();
         this.scene.remove(this.group);
         this.group.traverse(child => {
             if (child.geometry) child.geometry.dispose();

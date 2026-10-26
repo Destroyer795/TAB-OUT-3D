@@ -2,7 +2,7 @@
  * Game.js – Master game controller.
  *
  * Orchestrates the game loop, state machine, 3D scene, gameplay systems,
- * audio, and UI. Single source of truth.
+ * audio, progression, suspicion mechanics, and UI.
  */
 
 import * as THREE from 'three';
@@ -11,7 +11,7 @@ import EventBus  from './EventBus.js';
 import InputManager from './InputManager.js';
 import SaveManager  from './SaveManager.js';
 import { TweenManager } from '../utils/AnimationUtils.js';
-import { lerp, clamp } from '../utils/MathUtils.js';
+import { lerp } from '../utils/MathUtils.js';
 
 import { OfficeScene }   from '../scene/OfficeScene.js';
 import { Monitor }       from '../scene/Monitor.js';
@@ -22,6 +22,7 @@ import { ArcadeGame }        from '../gameplay/ArcadeGame.js';
 import { SpreadsheetMode }   from '../gameplay/SpreadsheetMode.js';
 import { ProductivitySystem } from '../gameplay/ProductivitySystem.js';
 import { BossSystem }        from '../gameplay/BossSystem.js';
+import { ProgressionSystem } from '../gameplay/ProgressionSystem.js';
 
 import AudioManager from '../audio/AudioManager.js';
 
@@ -46,7 +47,7 @@ export class Game {
         document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
         this.scene  = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xf1f5f9); // Extremely bright office daytime color
+        this.scene.background = new THREE.Color(0xf1f5f9);
         this.scene.fog = new THREE.Fog(0xf1f5f9, 15, 38);
 
         this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
@@ -73,9 +74,14 @@ export class Game {
         this.spreadsheet  = new SpreadsheetMode(this.monitor.getCanvas());
         this.productivity = new ProductivitySystem();
         this.bossSystem   = new BossSystem();
+        this.progression  = new ProgressionSystem();
 
-        /* ── Current monitor mode ─────────────────────── */
-        this._showingArcade = true;
+        /* ── Dynamic State Vars ───────────────────────── */
+        this._showingArcade   = true;
+        this.suspicion        = 0;     // 0 to 100%
+        this._heartbeatTimer  = 0;
+        this.coffeeCooldown   = 0;
+        this.isPaused         = false;
 
         /* ── UI ───────────────────────────────────────── */
         this.hud    = new HUD();
@@ -134,21 +140,20 @@ export class Game {
             this.boss.hide();
             if (this.fsm.current === GameState.BOSS_PRESENT ||
                 this.fsm.current === GameState.HIDING) {
-                // Return to appropriate state
                 if (this._showingArcade) {
                     this.fsm.transition(GameState.PLAYING);
                 } else {
-                    // Still hiding – go to HIDING
                     this.fsm.transition(GameState.HIDING);
                 }
             }
         });
 
         EventBus.on('bossFootstep', () => {
-            AudioManager.playFootstep();
+            const bossX = this.boss.group ? this.boss.group.position.x : 0;
+            AudioManager.playFootstep(bossX);
         });
 
-        EventBus.on('arcadeCollision', ({ score }) => {
+        EventBus.on('arcadeCollision', () => {
             AudioManager.playArcadeCollision();
             if (this.fsm.isActive) {
                 this.fsm.transition(GameState.GAMEOVER_CRASH);
@@ -159,12 +164,18 @@ export class Game {
             AudioManager.playScoreTick();
         });
 
-        EventBus.on('arcadeLaneSwitch', () => {
-            AudioManager.playLaneSwitchSound();
+        EventBus.on('arcadeCoffee', () => {
+            this.productivity.value = Math.min(100, this.productivity.value + 30);
+            this.hud.setProductivity(this.productivity.value);
         });
 
-        EventBus.on('arcadeCollect', () => {
-            AudioManager.playCollect();
+        EventBus.on('spreadsheetWorkDone', ({ boost }) => {
+            this.productivity.value = Math.min(100, this.productivity.value + boost);
+            this.hud.setProductivity(this.productivity.value);
+        });
+
+        EventBus.on('requestCoffee', () => {
+            this._drinkCoffee();
         });
 
         EventBus.on('productivityDepleted', () => {
@@ -183,7 +194,6 @@ export class Game {
        ══════════════════════════════════════════════════════ */
 
     _onStateChange(from, to) {
-        // ── Leaving states ─────────────────────
         if (from === GameState.MENU) {
             this.menu.hide();
         }
@@ -192,14 +202,16 @@ export class Game {
             this.hud.hideAlert();
         }
 
-        // ── Entering states ────────────────────
         switch (to) {
             case GameState.MENU:
                 this.menu.show();
                 this.hud.hide();
                 this.gameOver.hide();
                 this.boss.hide();
+                this.suspicion = 0;
+                this.monitor.setLedState('normal');
                 this._camTarget = { ...CAM_DEFAULT };
+                AudioManager.stopBgm();
                 break;
 
             case GameState.PLAYING:
@@ -208,6 +220,7 @@ export class Game {
                 this.boss.hide();
                 this.lighting.stopWarning();
                 this.hud.hideAlert();
+                this.monitor.setLedState('normal');
                 this._showArcade();
                 break;
 
@@ -219,13 +232,14 @@ export class Game {
                 AudioManager.playBossWarning();
                 this.lighting.startWarning();
                 this.hud.showAlert();
+                this.monitor.setLedState('warning');
                 break;
 
             case GameState.BOSS_PRESENT:
                 this.lighting.stopWarning();
                 this.hud.hideAlert();
                 this.boss.show();
-                // Detection check happens in update
+                this.monitor.setLedState('alert');
                 break;
 
             case GameState.GAMEOVER_FIRED:
@@ -247,31 +261,68 @@ export class Game {
     _startGame() {
         AudioManager.init();
         AudioManager.resume();
+        AudioManager.startBgm('arcade');
 
         // Reset systems
         this.arcadeGame.reset();
         this.spreadsheet.reset();
         this.productivity.reset();
         this.bossSystem.reset();
+        this.progression.resetRun();
         this.tweens.clear();
 
         this._showingArcade = true;
-        this._camTarget = { ...CAM_DEFAULT };
+        this.suspicion      = 0;
+        this.coffeeCooldown = 0;
+        this.isPaused       = false;
+        this._camTarget     = { ...CAM_DEFAULT };
 
         this.hud.setScore(0);
         this.hud.setBest(SaveManager.highScore);
         this.hud.setProductivity(100);
+        this.hud.setRank(this.progression.currentRank.title, this.progression.currentRank.icon);
         this.hud.setMode('arcade');
+        this.hud.setCoffeeCooldown(0);
+        this.hud.setSuspicion(0);
         this.hud.hideAlert();
 
         this.boss.hide();
         this.lighting.stopWarning();
+        this.monitor.setLedState('normal');
 
         this.fsm.transition(GameState.PLAYING);
     }
 
     _goToMenu() {
+        this.isPaused = false;
+        this.hud.hidePause();
         this.fsm.reset();
+    }
+
+    _togglePause() {
+        if (!this.fsm.isActive || this.fsm.isGameOver) return;
+        this.isPaused = !this.isPaused;
+
+        if (this.isPaused) {
+            AudioManager.setStealthMuffled(true);
+            this.hud.showPause(
+                () => { this.isPaused = false; AudioManager.setStealthMuffled(!this._showingArcade); },
+                () => {},
+                () => this._goToMenu()
+            );
+        } else {
+            this.hud.hidePause();
+            AudioManager.setStealthMuffled(!this._showingArcade);
+        }
+    }
+
+    _drinkCoffee() {
+        if (this.coffeeCooldown > 0) return;
+        this.coffeeCooldown = 22.0;
+        this.productivity.value = Math.min(100, this.productivity.value + 35);
+        this.hud.setProductivity(this.productivity.value);
+        AudioManager.playCoffeeGulp();
+        EventBus.emit('coffeeConsumed');
     }
 
     async _initSession() {
@@ -298,12 +349,14 @@ export class Game {
         this.hud.hide();
         this.boss.hide();
         this.lighting.stopWarning();
+        this.monitor.setLedState('normal');
 
         const score = this.arcadeGame.score;
         const isNew = await SaveManager.submitScore(score);
         const best  = SaveManager.highScore;
+        const rank  = this.progression.currentRank;
 
-        this.gameOver.show(type, score, best, isNew);
+        this.gameOver.show(type, score, best, isNew, rank.title, rank.icon);
     }
 
     /* ══════════════════════════════════════════════════════
@@ -319,6 +372,13 @@ export class Game {
     }
 
     _showSpreadsheet() {
+        // Check for Close Call bonus if player dodged boss with high suspicion
+        if (this.suspicion >= 55) {
+            this.arcadeGame.score += 250;
+            AudioManager.playCloseCall();
+            EventBus.emit('closeCall');
+        }
+
         this._showingArcade = false;
         this.hud.setMode('stealth');
         this.lighting.setMonitorColor(0xddeeff);
@@ -331,10 +391,12 @@ export class Game {
        ══════════════════════════════════════════════════════ */
 
     _loop() {
-        const dt = Math.min(this._clock.getDelta(), 0.05); // cap at 50 ms
+        const dt = Math.min(this._clock.getDelta(), 0.05);
 
         this._handleInput(dt);
-        this._update(dt);
+        if (!this.isPaused) {
+            this._update(dt);
+        }
         this._render();
 
         InputManager.endFrame();
@@ -346,21 +408,25 @@ export class Game {
         const state = this.fsm.current;
 
         if (state === GameState.MENU) return;
-
         if (this.fsm.isGameOver) return;
 
-        // ESC → menu
-        if (InputManager.wasPressed('Escape')) {
-            this._goToMenu();
+        // P / ESC → Pause
+        if (InputManager.wasPressed('KeyP') || InputManager.wasPressed('Escape')) {
+            this._togglePause();
             return;
         }
 
-        // SPACE → hide/show
+        if (this.isPaused) return;
+
+        // C → Drink Coffee
+        if (InputManager.wasPressed('KeyC')) {
+            this._drinkCoffee();
+        }
+
+        // SPACE → Hide / Show monitor
         if (InputManager.isDown('Space')) {
             if (state === GameState.PLAYING || state === GameState.BOSS_WARNING) {
-                // Can hide during warning too
                 if (state === GameState.BOSS_WARNING) {
-                    // Stay in BOSS_WARNING but show spreadsheet
                     this._showSpreadsheet();
                 } else {
                     this.fsm.transition(GameState.HIDING);
@@ -371,15 +437,33 @@ export class Game {
             if (state === GameState.HIDING) {
                 this.fsm.transition(GameState.PLAYING);
             } else if (!this._showingArcade && this.fsm.isActive) {
-                // Was hiding during boss warning, now released
                 this._showArcade();
             }
         }
 
-        // Arrow keys for arcade (only when arcade is active)
+        // Arcade movement (Arrow keys OR A / D keys)
         if (this._showingArcade && this.arcadeGame.alive) {
-            if (InputManager.wasPressed('ArrowLeft'))  this.arcadeGame.moveLeft();
-            if (InputManager.wasPressed('ArrowRight')) this.arcadeGame.moveRight();
+            if (InputManager.wasPressed('ArrowLeft') || InputManager.wasPressed('KeyA')) {
+                this.arcadeGame.moveLeft();
+            }
+            if (InputManager.wasPressed('ArrowRight') || InputManager.wasPressed('KeyD')) {
+                this.arcadeGame.moveRight();
+            }
+        }
+
+        // Active Spreadsheet Number-Crunching while hiding
+        if (!this._showingArcade) {
+            // Any typing keys while hiding
+            const typingKeys = ['KeyA', 'KeyB', 'KeyC', 'KeyD', 'KeyE', 'KeyF', 'KeyG', 'KeyH', 'KeyI',
+                                'KeyJ', 'KeyK', 'KeyL', 'KeyM', 'KeyN', 'KeyO', 'KeyP', 'KeyQ', 'KeyR',
+                                'KeyS', 'KeyT', 'KeyU', 'KeyV', 'KeyW', 'KeyX', 'KeyY', 'KeyZ',
+                                'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Enter'];
+            for (const code of typingKeys) {
+                if (InputManager.wasPressed(code)) {
+                    this.spreadsheet.crunchNumber();
+                    break;
+                }
+            }
         }
     }
 
@@ -388,46 +472,74 @@ export class Game {
     _update(dt) {
         this.tweens.update(dt);
 
-        const state = this.fsm.current;
-
-        // Camera interpolation (always)
+        // Camera interpolation
         this.camera.position.x = lerp(this.camera.position.x, this._camTarget.x, dt * 4);
         this.camera.position.y = lerp(this.camera.position.y, this._camTarget.y, dt * 4);
         this.camera.position.z = lerp(this.camera.position.z, this._camTarget.z, dt * 4);
         this._camLookY = lerp(this._camLookY, this._camTarget.lookY, dt * 4);
         this.camera.lookAt(0, this._camLookY, -1);
 
-        // Lighting
+        // Lighting & Monitor LED
         this.lighting.update(dt);
+        this.monitor.update(dt);
 
-        // Office Scene Animation (typing, talking, looking around)
+        // Office Scene Animation
         this.officeScene.update(dt);
 
         if (!this.fsm.isActive) return;
 
+        // Coffee Cooldown
+        if (this.coffeeCooldown > 0) {
+            this.coffeeCooldown = Math.max(0, this.coffeeCooldown - dt);
+        }
+        this.hud.setCoffeeCooldown(this.coffeeCooldown);
+
         // ── Boss system ──────────────────────────
         this.bossSystem.update(dt);
 
-        // Boss walk animation
         if (this.bossSystem.phase === 'present') {
             this.boss.updateWalk(this.bossSystem.bossProgress);
 
-            // Terminate the presence phase immediately if the boss walks out of the player's POV
             if (!this.isBossVisible() && this.bossSystem.bossProgress > 0.5) {
                 this.bossSystem.endPresence();
             }
         }
 
-        // ── Detection: boss sees arcade game ─────
-        if (this.fsm.current === GameState.BOSS_PRESENT && this._showingArcade && this.isBossVisible()) {
-            this.fsm.transition(GameState.GAMEOVER_FIRED);
-            return;
+        // ── Dynamic Suspicion Meter ──────────────
+        const bossSeesScreen = (this.fsm.current === GameState.BOSS_PRESENT && this._showingArcade && this.isBossVisible());
+
+        if (bossSeesScreen) {
+            // Suspicion rises quickly
+            this.suspicion = Math.min(100, this.suspicion + dt * 230);
+            this.monitor.setLedState('alert');
+
+            // Suspicion heartbeat audio
+            this._heartbeatTimer += dt;
+            if (this._heartbeatTimer >= 0.32) {
+                this._heartbeatTimer = 0;
+                AudioManager.playSuspicionHeartbeat();
+            }
+
+            // Caught!
+            if (this.suspicion >= 100) {
+                this.fsm.transition(GameState.GAMEOVER_FIRED);
+                return;
+            }
+        } else {
+            // Cool down
+            this.suspicion = Math.max(0, this.suspicion - dt * 170);
+            if (this.fsm.current === GameState.BOSS_WARNING) {
+                this.monitor.setLedState('warning');
+            } else if (this.fsm.current === GameState.BOSS_PRESENT) {
+                this.monitor.setLedState('warning');
+            } else {
+                this.monitor.setLedState('normal');
+            }
         }
+        this.hud.setSuspicion(this.suspicion);
 
         // ── Productivity drain & recovery ────────
-        // Drains when hiding AND boss is NOT present
         const isDraining = !this._showingArcade && this.bossSystem.phase !== 'present';
-        // Recovers when playing arcade game
         const isRecovering = this._showingArcade;
         this.productivity.update(dt, isDraining, isRecovering);
         this.hud.setProductivity(this.productivity.value);
@@ -436,10 +548,11 @@ export class Game {
         if (this._showingArcade) {
             this.arcadeGame.update(dt);
             this.hud.setScore(this.arcadeGame.score);
+            this.progression.checkScore(this.arcadeGame.score);
+            AudioManager.setMusicSpeed(this.arcadeGame.speed / 270);
         } else {
             this.spreadsheet.update(dt);
-            // Typing sounds
-            if (Math.random() < dt * 8) {
+            if (Math.random() < dt * 6) {
                 AudioManager.playTyping();
             }
         }
@@ -459,14 +572,10 @@ export class Game {
         const bx = this.boss.group.position.x;
         const bz = this.boss.group.position.z;
 
-        // Compute the visible X range at the boss's current Z coordinate
-        // based on line of sight from camera (0, 0, 1.8) past the cubicle opening at z = -2.5, x = +/- 1.8
-        const zDistCamToWall = 1.8 - (-2.5); // 4.3
+        const zDistCamToWall = 1.8 - (-2.5);
         const zDistCamToBoss = 1.8 - bz;
 
         const maxVisibleX = 1.8 * (zDistCamToBoss / zDistCamToWall);
-        
-        // Add a margin (e.g. 1.2 units) for the boss's wide physical body width
         const bodyMargin = 1.2;
         const limitX = maxVisibleX + bodyMargin;
 

@@ -1,6 +1,16 @@
 /**
- * SpreadsheetMode.js – Renders a convincing fake spreadsheet to the monitor canvas.
+ * SpreadsheetMode.js – Interactive corporate spreadsheet simulation.
+ *
+ * New Features:
+ *  - Active Number-Crunching: Typing any keys while hiding files financial formulas!
+ *  - Mechanical keyboard audio feedback per key press.
+ *  - Floating profit popups & live animated bar chart reactions.
+ *  - Active typing replenishes employee productivity meter!
+ *  - Hilarious corporate jargon generator.
  */
+
+import AudioManager from '../audio/AudioManager.js';
+import EventBus from '../core/EventBus.js';
 
 const W = 1024;
 const H = 576;
@@ -12,6 +22,27 @@ const TOOLBAR_HEIGHT = 36;
 const COL_WIDTH = 95;
 const ROW_HEADER_WIDTH = 40;
 
+const FORMULAS = [
+    '=SYNERGY(Q3_CAPEX * 1.45)',
+    '=EBITDA_GROWTH(REV, COGS)',
+    '=ACCELERATE_AI_DIVIDENDS()',
+    '=MAX(COFFEE_BUDGET, 99999)',
+    '=VLOOKUP("PROFITS", A1:J20, 2)',
+    '=TAX_OPTIMIZATION_BURNOUT()',
+    '=FORECAST_UNLIMITED_PIVOT()',
+    '=AUDIT_PROOF_INVENTORY()'
+];
+
+const JARGON_POPUPS = [
+    '+$24,500 EBITDA',
+    'SYNERGY +10%',
+    'BUDGET APPROVED!',
+    'PROD RECOVERED!',
+    'Q3 TARGET CRUSHED!',
+    'SHAREHOLDERS HAPPY',
+    'PARADIGM SHIFTED'
+];
+
 export class SpreadsheetMode {
     /**
      * @param {HTMLCanvasElement} canvas – Shared monitor canvas (1024×576).
@@ -20,23 +51,67 @@ export class SpreadsheetMode {
         this.canvas = canvas;
         this.ctx    = canvas.getContext('2d');
 
-        // Pre-generate cell data
         this._cells = this._generateCells();
         this._chartData = this._generateChartData();
-        this._cursorRow = 4;
+        this._cursorRow = 3;
         this._cursorCol = 2;
         this._typingTimer = 0;
-        this._typingText = '';
-        this._scrollOffset = 0;
+        this._typingText = '=SUM(B3:G3)';
         this._updateTimer = 0;
+        this._popups = [];
+        this._totalCrunched = 0;
     }
 
     reset() {
         this._cells = this._generateCells();
         this._chartData = this._generateChartData();
         this._typingTimer = 0;
-        this._typingText = '';
+        this._typingText = '=SUM(B3:G3)';
         this._updateTimer = 0;
+        this._popups = [];
+        this._totalCrunched = 0;
+    }
+
+    /**
+     * Called when the player presses a key while hiding.
+     * Generates active number crunching productivity boost!
+     */
+    crunchNumber() {
+        this._totalCrunched++;
+        AudioManager.playMechanicalKey();
+
+        // Advance cursor
+        this._cursorCol = (this._cursorCol + 1) % 8;
+        if (this._cursorCol === 0) {
+            this._cursorRow = 2 + Math.floor(Math.random() * 10);
+        }
+
+        // Cycle formula
+        const formula = FORMULAS[this._totalCrunched % FORMULAS.length];
+        this._typingText = formula;
+
+        // Boost chart and cell
+        if (this._cells[this._cursorRow] && this._cells[this._cursorRow][this._cursorCol]) {
+            const addedVal = (Math.random() * 8500 + 1200).toFixed(2);
+            this._cells[this._cursorRow][this._cursorCol].value = `$${addedVal}`;
+            this._cells[this._cursorRow][this._cursorCol].color = '#008744';
+        }
+
+        const chartIdx = Math.floor(Math.random() * this._chartData.length);
+        this._chartData[chartIdx] = Math.min(100, this._chartData[chartIdx] + 12);
+
+        // Spawn corporate profit popup
+        const randJargon = JARGON_POPUPS[Math.floor(Math.random() * JARGON_POPUPS.length)];
+        this._popups.push({
+            text: randJargon,
+            x: ROW_HEADER_WIDTH + this._cursorCol * COL_WIDTH + COL_WIDTH / 2,
+            y: HEADER_HEIGHT + TOOLBAR_HEIGHT + 24 + this._cursorRow * ROW_HEIGHT,
+            life: 0.8,
+            maxLife: 0.8,
+        });
+
+        // Emit work done for Game productivity recovery bonus
+        EventBus.emit('spreadsheetWorkDone', { boost: 2.2 });
     }
 
     /**
@@ -46,30 +121,22 @@ export class SpreadsheetMode {
         this._typingTimer += dt;
         this._updateTimer += dt;
 
-        // Simulate typing animation
-        if (this._typingTimer > 0.15) {
-            this._typingTimer = 0;
-            const chars = '0123456789.+-=SUM(AVERAGE(COUNT(IF(';
-            this._typingText += chars[Math.floor(Math.random() * chars.length)];
-            if (this._typingText.length > 20) {
-                this._typingText = '';
-                // Move cursor
-                this._cursorCol = Math.floor(Math.random() * 8);
-                this._cursorRow = 2 + Math.floor(Math.random() * 15);
+        // Subtle ambient financial updates
+        if (this._updateTimer > 0.8) {
+            this._updateTimer = 0;
+            const r = 1 + Math.floor(Math.random() * 9);
+            const c = 1 + Math.floor(Math.random() * 4);
+            if (this._cells[r] && this._cells[r][c]) {
+                this._cells[r][c].value = `$${(Math.random() * 9000 + 1000).toFixed(2)}`;
             }
         }
 
-        // Periodically update random cell values
-        if (this._updateTimer > 0.5) {
-            this._updateTimer = 0;
-            const r = Math.floor(Math.random() * this._cells.length);
-            const c = Math.floor(Math.random() * this._cells[r].length);
-            if (this._cells[r][c].type === 'number') {
-                this._cells[r][c].value = (Math.random() * 10000).toFixed(2);
-            }
-            // Update chart
-            const idx = Math.floor(Math.random() * this._chartData.length);
-            this._chartData[idx] = 20 + Math.random() * 80;
+        // Update floating popups
+        for (let i = this._popups.length - 1; i >= 0; i--) {
+            const p = this._popups[i];
+            p.y -= dt * 45;
+            p.life -= dt;
+            if (p.life <= 0) this._popups.splice(i, 1);
         }
     }
 
@@ -77,302 +144,261 @@ export class SpreadsheetMode {
         const ctx = this.ctx;
         ctx.save();
 
-        // ── Background ───────────────────────────────
-        ctx.fillStyle = '#f0f0f0';
+        // Background
+        ctx.fillStyle = '#f8fafc';
         ctx.fillRect(0, 0, W, H);
 
         // ── Title bar ────────────────────────────────
-        ctx.fillStyle = '#217346';
-        ctx.fillRect(0, 0, W, 26);
+        ctx.fillStyle = '#107c41'; // Modern Excel dark green
+        ctx.fillRect(0, 0, W, 28);
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+        ctx.font = 'bold 12px "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('📊  Q3-FY2026-Budget-Analysis.xlsx — ExcelPro', 10, 17);
+        ctx.fillText('FINANCIAL_AUDIT_FY26_CONSOLIDATED.XLSX — EXCEL 365 ENTERPRISE', 12, 18);
 
         // Window buttons
         ctx.fillStyle = '#ffffff';
-        ctx.font = '14px Arial';
+        ctx.font = '13px Arial';
         ctx.textAlign = 'right';
-        ctx.fillText('— □ ×', W - 12, 17);
+        ctx.fillText('— □ ×', W - 14, 18);
 
         // ── Menu bar ─────────────────────────────────
-        ctx.fillStyle = '#e8e8e8';
-        ctx.fillRect(0, 26, W, 22);
-        ctx.fillStyle = '#333';
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fillRect(0, 28, W, 24);
+        ctx.fillStyle = '#334155';
         ctx.font = '12px "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'left';
-        const menus = ['File', 'Edit', 'View', 'Insert', 'Format', 'Data', 'Review', 'Help'];
-        let mx = 10;
+        const menus = ['File', 'Home', 'Insert', 'Page Layout', 'Formulas', 'Data', 'Review', 'View', 'Automate'];
+        let mx = 12;
         for (const m of menus) {
-            ctx.fillText(m, mx, 41);
-            mx += ctx.measureText(m).width + 18;
+            ctx.fillText(m, mx, 44);
+            mx += ctx.measureText(m).width + 16;
         }
 
-        // ── Toolbar ──────────────────────────────────
-        const tbY = 48;
-        ctx.fillStyle = '#f5f5f5';
+        // ── Toolbar Ribbon ───────────────────────────
+        const tbY = 52;
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, tbY, W, TOOLBAR_HEIGHT);
-        ctx.strokeStyle = '#d0d0d0';
+        ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, tbY + TOOLBAR_HEIGHT);
         ctx.lineTo(W, tbY + TOOLBAR_HEIGHT);
         ctx.stroke();
 
-        // Fake toolbar buttons
-        const tools = ['✂️', '📋', '🔤', 'B', 'I', 'U', '🎨', '⬜', '📊', 'Σ', '🔽', '%', ','];
-        let tx = 8;
-        ctx.font = '14px Arial';
-        ctx.fillStyle = '#555';
+        const tools = ['Cut', 'Copy', 'Paste', '|', 'B', 'I', 'U', '|', 'AutoSum', 'Sort', '%', '$', '.00'];
+        let tx = 14;
+        ctx.font = '11px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#475569';
         for (const t of tools) {
-            ctx.fillText(t, tx, tbY + 24);
-            tx += 32;
+            ctx.fillText(t, tx, tbY + 22);
+            tx += ctx.measureText(t).width + 16;
         }
-
-        // Font selector
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(tx + 10, tbY + 6, 100, 22);
-        ctx.strokeStyle = '#bbb';
-        ctx.strokeRect(tx + 10, tbY + 6, 100, 22);
-        ctx.fillStyle = '#333';
-        ctx.font = '11px "Segoe UI", Arial';
-        ctx.fillText('Calibri', tx + 16, tbY + 22);
-
-        // Font size
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(tx + 118, tbY + 6, 40, 22);
-        ctx.strokeRect(tx + 118, tbY + 6, 40, 22);
-        ctx.fillStyle = '#333';
-        ctx.fillText('11', tx + 128, tbY + 22);
 
         // ── Formula bar ──────────────────────────────
         const fbY = tbY + TOOLBAR_HEIGHT;
-        ctx.fillStyle = '#fafafa';
-        ctx.fillRect(0, fbY, W, 24);
-        ctx.strokeStyle = '#d0d0d0';
-        ctx.beginPath();
-        ctx.moveTo(0, fbY + 24);
-        ctx.lineTo(W, fbY + 24);
-        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, fbY, W, 26);
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.strokeRect(0, fbY, W, 26);
 
-        ctx.fillStyle = '#555';
+        // Name Box
+        ctx.fillStyle = '#1e293b';
         ctx.font = 'bold 11px "Segoe UI", Arial';
-        ctx.fillText(`${COL_NAMES[this._cursorCol]}${this._cursorRow + 1}`, 8, fbY + 16);
+        ctx.fillText(`${COL_NAMES[this._cursorCol]}${this._cursorRow + 1}`, 12, fbY + 17);
 
-        ctx.fillStyle = '#ddd';
-        ctx.fillRect(46, fbY + 3, 1, 18);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(48, fbY + 3, 1, 20);
 
-        ctx.fillStyle = '#555';
+        // Function Text
+        ctx.fillStyle = '#2563eb';
+        ctx.font = 'bold 12px "Consolas", monospace';
+        ctx.fillText('fx', 58, fbY + 17);
+
+        ctx.fillStyle = '#0f172a';
         ctx.font = '12px "Consolas", monospace';
-        const formulaText = this._typingText || `=SUM(B${this._cursorRow}:G${this._cursorRow})`;
-        ctx.fillText('fx  ' + formulaText, 56, fbY + 16);
+        ctx.fillText(this._typingText, 80, fbY + 17);
 
         // Blinking cursor
-        if (Math.floor(Date.now() / 500) % 2 === 0) {
-            const tw = ctx.measureText('fx  ' + formulaText).width;
-            ctx.fillStyle = '#000';
-            ctx.fillRect(56 + tw + 2, fbY + 4, 1, 16);
+        if (Math.floor(Date.now() / 450) % 2 === 0) {
+            const tw = ctx.measureText(this._typingText).width;
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(80 + tw + 2, fbY + 5, 2, 16);
         }
 
         // ── Spreadsheet grid ─────────────────────────
-        const gridStartY = fbY + 24;
+        const gridStartY = fbY + 26;
 
-        // Column headers
-        ctx.fillStyle = '#e8eaed';
+        // Column headers (A, B, C...)
+        ctx.fillStyle = '#f1f5f9';
         ctx.fillRect(0, gridStartY, W, HEADER_HEIGHT);
-        ctx.strokeStyle = '#c0c0c0';
-        ctx.lineWidth = 1;
-
-        ctx.fillStyle = '#444';
+        ctx.fillStyle = '#64748b';
         ctx.font = 'bold 11px "Segoe UI", Arial';
         ctx.textAlign = 'center';
-        for (let c = 0; c < COL_NAMES.length; c++) {
-            const cx = ROW_HEADER_WIDTH + c * COL_WIDTH + COL_WIDTH / 2;
-            ctx.fillText(COL_NAMES[c], cx, gridStartY + 18);
-            // Column border
-            ctx.beginPath();
-            ctx.moveTo(ROW_HEADER_WIDTH + c * COL_WIDTH, gridStartY);
-            ctx.lineTo(ROW_HEADER_WIDTH + c * COL_WIDTH, H);
-            ctx.strokeStyle = '#ddd';
-            ctx.stroke();
+
+        for (let i = 0; i < COL_NAMES.length; i++) {
+            const x = ROW_HEADER_WIDTH + i * COL_WIDTH;
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.strokeRect(x, gridStartY, COL_WIDTH, HEADER_HEIGHT);
+            ctx.fillText(COL_NAMES[i], x + COL_WIDTH / 2, gridStartY + 18);
         }
 
-        // Rows
-        const visibleRows = Math.floor((H - gridStartY - HEADER_HEIGHT) / ROW_HEIGHT);
-        const dataStartY = gridStartY + HEADER_HEIGHT;
-
-        for (let r = 0; r < visibleRows && r < this._cells.length; r++) {
-            const ry = dataStartY + r * ROW_HEIGHT;
+        // Rows and cells
+        const maxRows = 12;
+        for (let r = 0; r < maxRows; r++) {
+            const y = gridStartY + HEADER_HEIGHT + r * ROW_HEIGHT;
 
             // Row header
-            ctx.fillStyle = '#e8eaed';
-            ctx.fillRect(0, ry, ROW_HEADER_WIDTH, ROW_HEIGHT);
-            ctx.fillStyle = '#444';
-            ctx.font = 'bold 11px "Segoe UI", Arial';
+            ctx.fillStyle = '#f1f5f9';
+            ctx.fillRect(0, y, ROW_HEADER_WIDTH, ROW_HEIGHT);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.strokeRect(0, y, ROW_HEADER_WIDTH, ROW_HEIGHT);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '11px "Segoe UI", Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(`${r + 1}`, ROW_HEADER_WIDTH / 2, ry + 17);
+            ctx.fillText(`${r + 1}`, ROW_HEADER_WIDTH / 2, y + 16);
 
-            // Row border
-            ctx.beginPath();
-            ctx.moveTo(0, ry + ROW_HEIGHT);
-            ctx.lineTo(W, ry + ROW_HEIGHT);
-            ctx.strokeStyle = '#e8e8e8';
-            ctx.stroke();
+            // Row cells
+            for (let c = 0; c < COL_NAMES.length; c++) {
+                const x = ROW_HEADER_WIDTH + c * COL_WIDTH;
+                const cell = this._cells[r] && this._cells[r][c] ? this._cells[r][c] : null;
 
-            // Cells
-            for (let c = 0; c < this._cells[r].length && c < COL_NAMES.length; c++) {
-                const cx = ROW_HEADER_WIDTH + c * COL_WIDTH;
-                const cell = this._cells[r][c];
+                // Active cell cursor highlight
+                const isSelected = (r === this._cursorRow && c === this._cursorCol);
+                if (isSelected) {
+                    ctx.fillStyle = 'rgba(16, 124, 65, 0.08)';
+                    ctx.fillRect(x, y, COL_WIDTH, ROW_HEIGHT);
+                } else {
+                    ctx.fillStyle = (r % 2 === 0) ? '#ffffff' : '#fcfcfc';
+                    ctx.fillRect(x, y, COL_WIDTH, ROW_HEIGHT);
+                }
 
-                // Selected cell highlight
-                if (r === this._cursorRow && c === this._cursorCol) {
-                    ctx.strokeStyle = '#217346';
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.strokeRect(x, y, COL_WIDTH, ROW_HEIGHT);
+
+                if (isSelected) {
+                    ctx.strokeStyle = '#107c41';
                     ctx.lineWidth = 2;
-                    ctx.strokeRect(cx + 1, ry + 1, COL_WIDTH - 2, ROW_HEIGHT - 2);
+                    ctx.strokeRect(x, y, COL_WIDTH, ROW_HEIGHT);
                     ctx.lineWidth = 1;
                 }
 
-                // Cell value
-                ctx.fillStyle = cell.color || '#222';
-                ctx.font = cell.bold ? 'bold 11px Consolas, monospace' : '11px Consolas, monospace';
-                ctx.textAlign = cell.type === 'number' ? 'right' : 'left';
-                const textX = cell.type === 'number' ? cx + COL_WIDTH - 6 : cx + 4;
-                ctx.fillText(cell.value, textX, ry + 17);
+                if (cell && cell.value) {
+                    ctx.fillStyle = cell.color || '#1e293b';
+                    ctx.font = cell.bold ? 'bold 11px "Segoe UI", Arial' : '11px "Segoe UI", Arial';
+                    ctx.textAlign = cell.type === 'number' ? 'right' : 'left';
+                    const tx = cell.type === 'number' ? x + COL_WIDTH - 8 : x + 8;
+                    ctx.fillText(cell.value, tx, y + 16);
+                }
             }
         }
 
-        // Row header background
-        ctx.fillStyle = '#e8eaed';
-        ctx.fillRect(0, gridStartY, ROW_HEADER_WIDTH, H - gridStartY);
-        // Redraw row numbers
-        for (let r = 0; r < visibleRows && r < this._cells.length; r++) {
-            const ry = dataStartY + r * ROW_HEIGHT;
-            ctx.fillStyle = '#444';
-            ctx.font = 'bold 11px "Segoe UI", Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${r + 1}`, ROW_HEADER_WIDTH / 2, ry + 17);
-        }
-
-        // ── Mini Chart (bottom-right) ────────────────
-        const chartX = W - 280;
-        const chartY = H - 160;
-        const chartW = 260;
+        // ── Real-Time Interactive Financial Chart Widget ──
+        const chartX = W - 260;
+        const chartY = gridStartY + HEADER_HEIGHT + 10;
+        const chartW = 240;
         const chartH = 140;
 
         ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#cbd5e1';
         ctx.fillRect(chartX, chartY, chartW, chartH);
-        ctx.strokeStyle = '#ccc';
         ctx.strokeRect(chartX, chartY, chartW, chartH);
 
-        ctx.fillStyle = '#333';
-        ctx.font = 'bold 10px "Segoe UI", Arial';
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 11px "Segoe UI", Arial';
         ctx.textAlign = 'left';
-        ctx.fillText('Revenue by Quarter', chartX + 8, chartY + 14);
+        ctx.fillText('FINANCIAL PROJECTION // FY26 EBITDA ANALYSIS', chartX + 10, chartY + 18);
 
-        // Bars
-        const barCount = this._chartData.length;
-        const barW = (chartW - 40) / barCount - 4;
-        const barStartY = chartY + chartH - 15;
-        const barMaxH = chartH - 35;
-        const barColors = ['#4472C4', '#ED7D31', '#A5A5A5', '#FFC000', '#5B9BD5', '#70AD47'];
+        // Chart Bars
+        const barW = 26;
+        const gap = 12;
+        const baseY = chartY + chartH - 24;
 
-        for (let i = 0; i < barCount; i++) {
-            const bh = (this._chartData[i] / 100) * barMaxH;
-            const bx = chartX + 20 + i * (barW + 4);
-            const by = barStartY - bh;
-            ctx.fillStyle = barColors[i % barColors.length];
-            ctx.fillRect(bx, by, barW, bh);
+        for (let i = 0; i < this._chartData.length; i++) {
+            const bx = chartX + 18 + i * (barW + gap);
+            const val = this._chartData[i];
+            const bh = (val / 100) * 75;
+
+            // Bar Gradient
+            const barGrad = ctx.createLinearGradient(0, baseY - bh, 0, baseY);
+            barGrad.addColorStop(0, '#107c41');
+            barGrad.addColorStop(1, '#22c55e');
+            ctx.fillStyle = barGrad;
+            ctx.fillRect(bx, baseY - bh, barW, bh);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '9px "Segoe UI", Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`M${i + 1}`, bx + barW / 2, baseY + 14);
         }
 
-        // Chart labels
-        ctx.font = '8px Arial';
-        ctx.fillStyle = '#888';
-        ctx.textAlign = 'center';
-        const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Proj', 'YoY'];
-        for (let i = 0; i < barCount && i < labels.length; i++) {
-            ctx.fillText(labels[i], chartX + 20 + i * (barW + 4) + barW / 2, barStartY + 10);
+        // ── Floating Profit Popups ────────────────────
+        for (const p of this._popups) {
+            const alpha = p.life / p.maxLife;
+            ctx.save();
+            ctx.font = 'bold 14px "Outfit", sans-serif';
+            ctx.fillStyle = '#107c41';
+            ctx.shadowColor = '#22c55e';
+            ctx.shadowBlur = 8;
+            ctx.globalAlpha = alpha;
+            ctx.textAlign = 'center';
+            ctx.fillText(p.text, p.x, p.y);
+            ctx.restore();
         }
 
-        // ── Status bar ───────────────────────────────
-        ctx.fillStyle = '#217346';
-        ctx.fillRect(0, H - 22, W, 22);
-        ctx.fillStyle = '#fff';
-        ctx.font = '11px "Segoe UI", Arial';
+        // ── Bottom Status Bar ────────────────────────
+        ctx.fillStyle = '#107c41';
+        ctx.fillRect(0, H - 24, W, 24);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px "Segoe UI", Arial';
         ctx.textAlign = 'left';
-        ctx.fillText('Ready', 10, H - 7);
+        ctx.fillText('TYPE ANY KEYS TO AUDIT FINANCIAL DATA & RESTORE PRODUCTIVITY', 14, H - 8);
         ctx.textAlign = 'right';
-        ctx.fillText('Sum: $48,293.15   Average: $6,036.64   Count: 8', W - 12, H - 7);
+        ctx.fillText(`Crunched: ${this._totalCrunched} items   |   Mode: Stealth Protected`, W - 14, H - 8);
 
         ctx.restore();
     }
 
-    /* ── Private ───────────────────────────────────────── */
+    /* ── Private generator ──────────────────────────────── */
 
     _generateCells() {
-        const rows = 20;
+        const rows = 14;
         const cols = 10;
         const data = [];
 
-        // Header row
-        const headers = ['Department', 'Q1 Rev', 'Q2 Rev', 'Q3 Rev', 'Q4 Proj', 'Total', 'YoY %', 'Budget', 'Variance', 'Status'];
-        data.push(headers.map(h => ({ value: h, type: 'text', bold: true, color: '#1a1a1a' })));
+        const headers = ['Department', 'Q1 Rev', 'Q2 Rev', 'Q3 Rev', 'Q4 Proj', 'EBITDA', 'Growth', 'Budget', 'Variance', 'Status'];
+        data.push(headers.map(h => ({ value: h, type: 'text', bold: true, color: '#0f172a' })));
 
-        const departments = ['Engineering', 'Marketing', 'Sales', 'Operations', 'HR', 'Finance', 'Legal', 'R&D', 'Support', 'Product'];
-        const statuses = ['On Track', 'At Risk', 'Ahead', 'On Track', 'Behind', 'On Track', 'Ahead', 'At Risk', 'On Track', 'Ahead'];
+        const departments = ['Engineering', 'Marketing', 'Sales', 'Operations', 'Human Res', 'Finance', 'Legal Compliance', 'R&D Labs', 'Product AI', 'Global Cloud'];
+        const statuses = ['Ahead', 'On Track', 'Optimized', 'Ahead', 'On Track', 'Surplus', 'Approved', 'Ahead', 'Maximized', 'On Track'];
 
         for (let r = 0; r < departments.length; r++) {
             const row = [];
-            row.push({ value: departments[r], type: 'text', bold: false, color: '#222' });
-            // Q1-Q4
+            row.push({ value: departments[r], type: 'text', bold: true, color: '#334155' });
             for (let q = 0; q < 4; q++) {
-                const v = (1000 + Math.random() * 9000).toFixed(2);
-                row.push({ value: `$${v}`, type: 'number', bold: false, color: '#1a5276' });
+                const val = (2000 + Math.random() * 8000).toFixed(2);
+                row.push({ value: `$${val}`, type: 'number', bold: false, color: '#0369a1' });
             }
-            // Total (formula-ish)
-            const total = (4000 + Math.random() * 36000).toFixed(2);
-            row.push({ value: `$${total}`, type: 'number', bold: true, color: '#217346' });
-            // YoY
-            const yoy = (-15 + Math.random() * 40).toFixed(1);
-            const yoyColor = parseFloat(yoy) >= 0 ? '#217346' : '#c0392b';
-            row.push({ value: `${yoy}%`, type: 'number', bold: false, color: yoyColor });
-            // Budget
-            row.push({ value: `$${(3000 + Math.random() * 30000).toFixed(2)}`, type: 'number', bold: false, color: '#555' });
-            // Variance
-            const variance = (-5000 + Math.random() * 10000).toFixed(2);
-            const varColor = parseFloat(variance) >= 0 ? '#217346' : '#c0392b';
-            row.push({ value: `$${variance}`, type: 'number', bold: false, color: varColor });
-            // Status
-            const st = statuses[r];
-            const stColor = st === 'On Track' ? '#217346' : st === 'Ahead' ? '#2471a3' : '#c0392b';
-            row.push({ value: st, type: 'text', bold: false, color: stColor });
+            const total = (8000 + Math.random() * 32000).toFixed(2);
+            row.push({ value: `$${total}`, type: 'number', bold: true, color: '#15803d' });
+
+            const growth = (8 + Math.random() * 35).toFixed(1);
+            row.push({ value: `+${growth}%`, type: 'number', bold: false, color: '#15803d' });
+
+            const budget = (5000 + Math.random() * 25000).toFixed(2);
+            row.push({ value: `$${budget}`, type: 'number', bold: false, color: '#475569' });
+
+            const variance = (1500 + Math.random() * 8500).toFixed(2);
+            row.push({ value: `+$${variance}`, type: 'number', bold: false, color: '#15803d' });
+
+            row.push({ value: statuses[r], type: 'text', bold: true, color: '#16a34a' });
             data.push(row);
         }
-
-        // Empty rows
-        for (let r = departments.length + 1; r < rows; r++) {
-            const row = [];
-            for (let c = 0; c < cols; c++) {
-                row.push({ value: '', type: 'text', bold: false, color: '#222' });
-            }
-            data.push(row);
-        }
-
-        // Summary rows
-        data[departments.length + 2] = [
-            { value: 'TOTALS', type: 'text', bold: true, color: '#1a1a1a' },
-            ...Array(4).fill(null).map(() => ({
-                value: `$${(15000 + Math.random() * 50000).toFixed(2)}`,
-                type: 'number', bold: true, color: '#217346'
-            })),
-            { value: `$${(60000 + Math.random() * 200000).toFixed(2)}`, type: 'number', bold: true, color: '#217346' },
-            { value: `${(5 + Math.random() * 20).toFixed(1)}%`, type: 'number', bold: true, color: '#217346' },
-            ...Array(3).fill({ value: '', type: 'text', bold: false, color: '#222' }),
-        ];
 
         return data;
     }
 
     _generateChartData() {
-        return Array.from({ length: 6 }, () => 20 + Math.random() * 80);
+        return [35, 52, 68, 74, 88, 95];
     }
 }
