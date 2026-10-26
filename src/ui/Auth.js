@@ -56,6 +56,15 @@ export class Auth {
                         <span class="btn-glow"></span>
                         <span id="submit-text">SIGN IN</span>
                     </button>
+
+                    <div class="auth-divider">
+                        <span>OR</span>
+                    </div>
+
+                    <button type="button" class="menu-btn menu-btn-guest" id="auth-guest">
+                        <span class="guest-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+                        <span>INSTANT GUEST ACCESS</span>
+                    </button>
                 </form>
             </div>
         `;
@@ -71,16 +80,29 @@ export class Auth {
         this._inputEmail = document.getElementById('auth-email');
         this._inputPassword = document.getElementById('auth-password');
         this._submitText = document.getElementById('submit-text');
+        this._guestBtn = document.getElementById('auth-guest');
 
         // Bind event listeners
         this._tabSignin.addEventListener('click', () => this._setTab('signin'));
         this._tabSignup.addEventListener('click', () => this._setTab('signup'));
         this._form.addEventListener('submit', (e) => this._handleSubmit(e));
+        this._guestBtn.addEventListener('click', () => this._handleGuestPlay());
 
         // Hover sounds
         this._tabSignin.addEventListener('mouseenter', () => AudioManager.playButtonHover());
         this._tabSignup.addEventListener('mouseenter', () => AudioManager.playButtonHover());
         document.getElementById('auth-submit').addEventListener('mouseenter', () => AudioManager.playButtonHover());
+        this._guestBtn.addEventListener('mouseenter', () => AudioManager.playButtonHover());
+    }
+
+    async _handleGuestPlay() {
+        AudioManager.playButtonClick();
+        await AuthSystem.playAsGuest();
+        this._showSuccess('Logging in as Guest...');
+        setTimeout(() => {
+            this.hide();
+            this._onSuccess();
+        }, 300);
     }
 
     _setTab(tab) {

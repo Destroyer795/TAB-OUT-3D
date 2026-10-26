@@ -19,13 +19,13 @@ const SESSION_KEY = 'tabout3d_current_user';
 
 class _AuthSystem {
     constructor() {
+        this._users = this._loadUsers();
+        this._currentUser = this._loadSession();
+
         if (!isSupabaseConfigured) {
-            console.log("Supabase credentials not configured in Config.js. Running in LocalStorage offline mode.");
-            this._users = this._loadUsers();
-            this._currentUser = this._loadSession();
+            console.log("Running in LocalStorage offline mode with local leaderboards.");
         } else {
-            console.log("Supabase successfully initialized for global leaderboard.");
-            this._currentUser = null;
+            console.log("Supabase configured for global accounts.");
         }
     }
 
@@ -244,15 +244,37 @@ class _AuthSystem {
     }
 
     /**
+     * Start an immediate session as a guest player without credentials.
+     * @returns {Promise<{success: boolean}>}
+     */
+    async playAsGuest() {
+        let guestName = localStorage.getItem('tabout3d_guest_name');
+        if (!guestName) {
+            guestName = 'Agent_' + Math.floor(1000 + Math.random() * 9000);
+            localStorage.setItem('tabout3d_guest_name', guestName);
+        }
+        const pb = parseInt(localStorage.getItem('tabout3d_guest_pb') || '0', 10);
+        this._currentUser = {
+            username: guestName,
+            email: 'guest@office.local',
+            personalBest: pb,
+            isGuest: true
+        };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(this._currentUser));
+        return { success: true };
+    }
+
+    /**
      * Terminate the current user session.
      * @returns {Promise<void>}
      */
     async signOut() {
         if (supabase) {
-            await supabase.auth.signOut();
-        } else {
-            localStorage.removeItem(SESSION_KEY);
+            try {
+                await supabase.auth.signOut();
+            } catch {}
         }
+        localStorage.removeItem(SESSION_KEY);
         this._currentUser = null;
     }
 
@@ -261,6 +283,18 @@ class _AuthSystem {
      * @returns {Promise<object|null>}
      */
     async getCurrentUser() {
+        // Check for local guest session first
+        try {
+            const localSession = localStorage.getItem(SESSION_KEY);
+            if (localSession) {
+                const parsed = JSON.parse(localSession);
+                if (parsed && parsed.isGuest) {
+                    this._currentUser = parsed;
+                    return this._currentUser;
+                }
+            }
+        } catch {}
+
         if (supabase) {
             try {
                 const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -354,6 +388,17 @@ class _AuthSystem {
      * @returns {Promise<boolean>} Whether a new personal best was set.
      */
     async updateScore(score) {
+        if (this._currentUser && this._currentUser.isGuest) {
+            const currentPb = this._currentUser.personalBest || 0;
+            if (score > currentPb) {
+                this._currentUser.personalBest = score;
+                localStorage.setItem('tabout3d_guest_pb', score.toString());
+                localStorage.setItem(SESSION_KEY, JSON.stringify(this._currentUser));
+                return true;
+            }
+            return false;
+        }
+
         if (supabase) {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -433,21 +478,22 @@ class _AuthSystem {
                     .limit(5);
 
                 if (error) throw error;
-                return data.map(p => ({
-                    username: p.username,
-                    personalBest: p.personal_best || 0
-                }));
+                if (data && data.length > 0) {
+                    return data.map(p => ({
+                        username: p.username,
+                        personalBest: p.personal_best || 0
+                    }));
+                }
             } catch (err) {
-                console.error("Failed to fetch Supabase leaderboard:", err);
-                return [];
+                console.warn("Supabase leaderboard unavailable, falling back to local leaderboard.");
             }
-        } else {
-            // LocalStorage Fallback
-            return [...this._users]
-                .sort((a, b) => b.personalBest - a.personalBest)
-                .slice(0, 5)
-                .map(u => ({ username: u.username, personalBest: u.personalBest }));
         }
+        
+        // LocalStorage Fallback
+        return [...this._users]
+            .sort((a, b) => b.personalBest - a.personalBest)
+            .slice(0, 5)
+            .map(u => ({ username: u.username, personalBest: u.personalBest }));
     }
 
     /* ── Internal (LocalStorage Fallback) ──────────────── */
