@@ -23,18 +23,19 @@ const merge = (a, b) => { const o = { ...a }; for (const k in b) o[k] = isObj(b[
 
 /* ───────────────────────── body dimensions (metres) ───────────────────── */
 const K = {
-  THIGH: 0.46, SHIN: 0.44, ANKLE: 0.08, HIP_W: 0.135,
-  SPINE_Y: 0.08, SH_W: 0.22, SH_Y: 0.40, NECK_Y: 0.46, HEAD_Y: 0.09,
+  THIGH: 0.46, SHIN: 0.44, ANKLE: 0.08, HIP_W: 0.10,
+  SPINE_Y: 0.08, SH_W: 0.185, SH_Y: 0.375, NECK_Y: 0.455, HEAD_Y: 0.045,
   UARM: 0.30, FARM: 0.27,
   HIP_STAND: 0.94, HIP_WALK: 0.90, SEAT: 0.52,
   BASE_HEIGHT: 1.78,
 };
-const HX = 0.084, HY = 0.112, HZ = 0.098;   // skull half-extents
+const HX = 0.088, HY = 0.120, HZ = 0.098;   // skull half-extents
 
 /* ───────────────────────── geometry helpers (smooth 32-seg) ──────────── */
 const UNIT_SPHERE = new THREE.SphereGeometry(1, 32, 24);
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
 const SHARED = new Set([UNIT_SPHERE, UNIT_BOX]);
+let activeRigs = 0;
 
 function lathe(prof, seg = 36) {
   const pts = new THREE.SplineCurve(prof.map(([r, y]) => new V2(r, y))).getPoints(prof.length * 5);
@@ -57,23 +58,38 @@ function limbGeo(len, r0, r1, bulge = 0.08, seg = 32) {
 
 const jawK = (Y) => sstep(0.05, -0.95, Y);
 const szK = (j, front) => 1 - 0.10 * j + (front ? 0.06 * j * j : 0);
+function faceOffset(x, y) {
+  const gauss = (cx, cy, rx, ry) => Math.exp(-(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2));
+  return (gauss(.045, -.016, .026, .025) + gauss(-.045, -.016, .026, .025)) * .004
+    - (gauss(.034, .018, .019, .014) + gauss(-.034, .018, .019, .014)) * .003
+    + gauss(0, -.071, .030, .018) * .006
+    + gauss(0, .005, .009, .033) * .011
+    + gauss(0, -.022, .013, .013) * .020;
+}
 function headGeo() {
   const g = new THREE.SphereGeometry(1, 54, 40);
   const p = g.attributes.position, n = g.attributes.normal;
   for (let i = 0; i < p.count; i++) {
     const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i), j = jawK(Y);
-    const x = X * (1 - 0.22 * j) * HX, y = Y * HY, z = Z * szK(j, Z > 0) * HZ;
+    const x = X * (1 - 0.22 * j) * HX, y = Y * HY;
+    let z = Z * szK(j, Z > 0) * HZ;
+    if (Z > 0) {
+      // Sculpted planes, rather than a featureless sphere: cheekbones, brow,
+      // eye sockets and a soft chin. Features remain within the same skin mesh.
+      z += faceOffset(x, y);
+    }
     p.setXYZ(i, x, y, z);
     const nv = new V3(x / (HX * HX), y / (HY * HY), z / (HZ * HZ)).normalize();
     n.setXYZ(i, nv.x, nv.y, nv.z);
   }
+  g.computeVertexNormals();
   return g;
 }
 /** z of the skull surface at (x,y) — used to seat the face features precisely. */
 function headZ(x, y) {
   const Y = clamp(y / HY, -0.999, 0.999), j = jawK(Y);
   const X = x / (HX * (1 - 0.22 * j)), Z2 = 1 - X * X - Y * Y;
-  return Z2 <= 0 ? 0 : HZ * Math.sqrt(Z2) * szK(j, true);
+  return Z2 <= 0 ? 0 : HZ * Math.sqrt(Z2) * szK(j, true) + faceOffset(x, y);
 }
 
 /* ───────────────────────── two-bone IK (parent space) ─────────────────── */
@@ -110,29 +126,31 @@ const pose = (g, L, R, expr = 'neutral') => ({ g: { ...BASE_G, ...g }, L: { ...A
 const HANDS_BACK = { sX: 0.5, sZ: 0.02, tw: -1.25, el: -1.15, pro: 0.2, curl: 0.5, swing: 0 };
 const CROSS_L = { sX: -0.55, sZ: -0.02, tw: -1.2, el: -1.85, pro: 0.9, curl: 0.7, swing: 0 };
 const CROSS_R = { sX: -0.70, sZ: -0.02, tw: -1.2, el: -1.7, pro: 0.9, curl: 0.7, swing: 0 };
-const RELAX_SIT = { sX: -0.25, sZ: 0.05, el: -0.95, pro: 0.9, curl: 0.35 };
-const TALK_ARM = { sX: -0.45, sZ: 0.14, el: -1.30, pro: 0.85, curl: 0.4 };
+const RELAX_SIT = { ik: 1, sX: -.12, sZ: .05, el: -.9, pro: .9, curl: .22, swing: 0 };
+const TALK_ARM = { ik: 1, sX: -.22, sZ: .08, el: -1.15, pro: .85, curl: .25, swing: 0 };
 
 export const POSES = {
   stand: pose({}, {}),
   patrol: pose({ spX: -0.02, hdX: -0.04 }, HANDS_BACK),
   carry: pose({}, {}, { sX: 0.03, sZ: 0.05, el: -0.12, pro: 0.35, curl: 1.25, swing: 0.2 }),
-  sitType: pose({ sit: 1, spX: 0.14, hdX: 0.12, type: 1 }, { ik: 1, curl: 0.45, sX: -0.45, el: -1.25, pro: 1.35 }, null, 'focus'),
-  sitIdle: pose({ sit: 1, spX: 0.06 }, RELAX_SIT),
-  sitTalk: pose({ sit: 1, spX: 0.05, talk: 1 }, TALK_ARM),
-  standTalk: pose({ talk: 1, stance: 0.02 }, TALK_ARM),
+  sitType: pose({ sit: 1, spX: .065, hdX: .035, type: 1 }, { ik: 1, curl: .22, sX: -.25, el: -1.15, pro: 1.35 }, null, 'focus'),
+  sitIdle: pose({ sit: 1, spX: -.015 }, RELAX_SIT),
+  sitTalk: pose({ sit: 1, spX: .025, talk: 1 }, TALK_ARM),
+  standTalk: pose({ talk: 1, stance: .015 }, { sX: -.12, sZ: .06, el: -.6, curl: .2 }),
+  sitAlert: pose({ sit: 1, spX: .025, panic: .22 }, RELAX_SIT, null, 'shock'),
+  alert: pose({ spX: -.015, panic: .18 }, { sX: -.05, el: -.3, swing: 0 }, null, 'shock'),
   interrogate: pose({ spX: 0.2, hdX: 0.14, stance: 0.045, stagger: 0.14 }, CROSS_L, CROSS_R, 'scowl'),
   point: pose({ spX: 0.12, hdX: 0.06, stagger: 0.12, stance: 0.04 },
     { sX: -0.1, sZ: 0.55, tw: -0.9, el: -1.4, pro: 1.0, curl: 1.1, swing: 0 },
     { sX: -1.35, sZ: 0.12, el: -0.12, pro: 1.3, curl: 1.2, point: 1, swing: 0 }, 'scowl'),
-  panic: pose({ spX: -0.1, hdX: -0.1, hdZ: 0.06, stance: 0.03, panic: 1 }, { sX: -0.85, sZ: 0.4, el: -1.5, pro: 0.4, curl: 0.9, swing: 0 }, null, 'shock'),
+  panic: pose({ spX: -.04, hdX: -.03, stance: .02, panic: .35 }, { sX: -.18, sZ: .12, el: -.7, curl: .35, swing: 0 }, null, 'shock'),
 };
 export const EXPRESSIONS = {
   neutral: { brow: 0, furrow: 0, smile: 0.05, mouth: 0, lid: 0.92 },
   focus: { brow: -0.1, furrow: 0.25, smile: 0, mouth: 0, lid: 0.78 },
   scowl: { brow: -0.3, furrow: 1, smile: -0.8, mouth: 0, lid: 0.72 },
   smile: { brow: 0.2, furrow: 0, smile: 0.9, mouth: 0, lid: 0.88 },
-  shock: { brow: 1, furrow: 0, smile: 0, mouth: 0.75, lid: 1.30 },
+  shock: { brow: .55, furrow: .05, smile: 0, mouth: .18, lid: 1.08 },
 };
 
 /* ───────────────────────── defaults & presets ─────────────────────────── */
@@ -141,10 +159,14 @@ const DEFAULTS = {
   body: { shoulder: 1.05, waist: 1.0, hip: 1.02, chest: 1.04 },
   skin: 0xf3cbb1, eye: 0x3b2a1a,
   hair: { style: 'crop', color: 0x241812 },
-  outfit: { type: 'shirt', top: 0x2563eb, shirt: 0xf8fafc, pants: 0x1e293b, shoes: 0x0f172a, tie: 0x991b1b },
+  outfit: { type: 'shirt', top: 0x52728a, shirt: 0xf8fafc, pants: 0x1e293b, shoes: 0x0f172a, tie: 0x991b1b },
   acc: { glasses: false, headphones: false, watch: false, briefcase: false, lanyard: null, mustache: false },
   keyboard: [0, 0.74, 0.36],
   seatHeight: K.SEAT,
+  footHeight: 0,
+  seatedFootZ: .33,
+  restHands: [0, .61, .24],
+  tableHands: [0, .79, .30],
   walkSpeedScale: 1,
 };
 
@@ -158,14 +180,14 @@ export function createBoss(opts = {}) {
 }
 
 const LOOKS = [
-  { gender: 'm', skin: 0xf3cbb1, hair: { style: 'crop', color: 0x2b1d14 }, outfit: { type: 'shirt', top: 0x2563eb, pants: 0x1e293b }, acc: { glasses: true, lanyard: 0x06b6d4 }, height: 1.82 },
+  { gender: 'm', skin: 0xf3cbb1, hair: { style: 'crop', color: 0x2b1d14 }, outfit: { type: 'shirt', top: 0x52728a, pants: 0x1e293b }, acc: { glasses: true, lanyard: 0x06b6d4 }, height: 1.82 },
   { gender: 'f', skin: 0xdfb091, hair: { style: 'bob', color: 0x18120e }, outfit: { type: 'shirt', top: 0xf8fafc, pants: 0x334155 }, acc: { headphones: true, lanyard: 0x6366f1 }, height: 1.70, body: { shoulder: 0.95, waist: 0.92, hip: 1.08, chest: 1.04 } },
-  { gender: 'm', skin: 0x966144, hair: { style: 'curly', color: 0x100b08 }, outfit: { type: 'sweater', top: 0x166534, pants: 0x1e293b }, acc: { lanyard: 0x10b981 }, height: 1.85, body: { shoulder: 1.1, waist: 1.04, hip: 1.02, chest: 1.08 } },
-  { gender: 'f', skin: 0xfad6be, hair: { style: 'bun', color: 0x542c16 }, outfit: { type: 'shirt', top: 0x9333ea, pants: 0x0f172a }, acc: { glasses: true, lanyard: 0xf59e0b }, height: 1.68, body: { shoulder: 0.93, waist: 0.90, hip: 1.10, chest: 1.05 } },
-  { gender: 'm', skin: 0xe5b897, hair: { style: 'pomp', color: 0x3d2919 }, outfit: { type: 'shirt', top: 0x0284c7, pants: 0x1e293b }, acc: { headphones: true, lanyard: 0x06b6d4 }, height: 1.78 },
-  { gender: 'f', skin: 0xbe825e, hair: { style: 'long', color: 0x1c100a }, outfit: { type: 'sweater', top: 0xdb2777, pants: 0x1e293b }, acc: { lanyard: 0x6366f1 }, height: 1.72, body: { shoulder: 0.94, waist: 0.91, hip: 1.08, chest: 1.05 } },
-  { gender: 'm', skin: 0xf7cfb5, hair: { style: 'crop', color: 0x9a5b28 }, outfit: { type: 'shirt', top: 0x0d9488, pants: 0x1e293b }, acc: { glasses: true, mustache: true, lanyard: 0x10b981 }, height: 1.80 },
-  { gender: 'f', skin: 0x7a4931, hair: { style: 'curly', color: 0x0a0705 }, outfit: { type: 'shirt', top: 0xd97706, pants: 0x0f172a }, acc: { lanyard: 0xf59e0b }, height: 1.70, body: { shoulder: 0.94, waist: 0.90, hip: 1.08, chest: 1.04 } },
+  { gender: 'm', skin: 0x966144, hair: { style: 'curly', color: 0x100b08 }, outfit: { type: 'sweater', top: 0x3f5a50, pants: 0x1e293b }, acc: { lanyard: 0x10b981 }, height: 1.85, body: { shoulder: 1.1, waist: 1.04, hip: 1.02, chest: 1.08 } },
+  { gender: 'f', skin: 0xfad6be, hair: { style: 'bun', color: 0x542c16 }, outfit: { type: 'shirt', top: 0x69566e, pants: 0x0f172a }, acc: { glasses: true, lanyard: 0xf59e0b }, height: 1.68, body: { shoulder: 0.93, waist: 0.90, hip: 1.10, chest: 1.05 } },
+  { gender: 'm', skin: 0xe5b897, hair: { style: 'pomp', color: 0x3d2919 }, outfit: { type: 'shirt', top: 0x476a81, pants: 0x1e293b }, acc: { headphones: true, lanyard: 0x06b6d4 }, height: 1.78 },
+  { gender: 'f', skin: 0xbe825e, hair: { style: 'long', color: 0x1c100a }, outfit: { type: 'sweater', top: 0x815461, pants: 0x1e293b }, acc: { lanyard: 0x6366f1 }, height: 1.72, body: { shoulder: 0.94, waist: 0.91, hip: 1.08, chest: 1.05 } },
+  { gender: 'm', skin: 0xf7cfb5, hair: { style: 'crop', color: 0x9a5b28 }, outfit: { type: 'shirt', top: 0x47716d, pants: 0x1e293b }, acc: { glasses: true, mustache: true, lanyard: 0x10b981 }, height: 1.80 },
+  { gender: 'f', skin: 0x7a4931, hair: { style: 'curly', color: 0x0a0705 }, outfit: { type: 'shirt', top: 0x9b7955, pants: 0x0f172a }, acc: { lanyard: 0xf59e0b }, height: 1.70, body: { shoulder: 0.94, waist: 0.90, hip: 1.08, chest: 1.04 } },
 ];
 export function createEmployee(index = 0, opts = {}) {
   const look = LOOKS[index % LOOKS.length];
@@ -175,15 +197,20 @@ export function createEmployee(index = 0, opts = {}) {
 /* ═══════════════════════════════ Human ═══════════════════════════════════ */
 export class Human {
   constructor(opts = {}) {
+    activeRigs++;
     this.o = merge(DEFAULTS, opts);
     this.root = new THREE.Group(); this.root.name = this.o.name;
     this._mats = new Map(); this._geos = [];
+    this._skeletons = [];
     this.rng = mulberry32(this.o.seed * 7919 + 13);
     this.time = this.rng() * 50; this.phase = this.rng();
     this.t = {}; this.s = {}; this.rate = 8;
     this.speed = 0; this.speedOverride = null; this.walkW = 0;
     this._prev = new V3(); this._first = true;
     this.lookTarget = null; this.talking = false; this.poseName = 'stand';
+    this.talkingWeight = 0;
+    this._mouthOpen = 0;
+    this._strikes = new Float32Array(5);
     this._gaze = { yaw: 0, pit: 0 };
     this._blink = { next: 1 + this.rng() * 3, age: 9 };
     this._sac = { next: 0, yaw: 0, pit: 0 };
@@ -191,11 +218,13 @@ export class Human {
     this._build();
     this.root.scale.setScalar(this.o.height / K.BASE_HEIGHT);
     this.setPose('stand', { snap: true });
+    this._batchRenderParts();
   }
 
   /* ───────────── public API ───────────── */
   setPose(name, opts = {}) {
     const P = POSES[name]; if (!P) throw new Error('Unknown pose ' + name);
+    if (this.poseName === name && !opts.snap && !opts.force) return this;
     this.poseName = name;
     const t = { ...P.g };
     for (const sd of ['L', 'R']) for (const k in P[sd]) t[sd + '.' + k] = P[sd][k];
@@ -217,9 +246,14 @@ export class Human {
   getHeadWorld(out = new V3()) { return this.skull.getWorldPosition(out); }
 
   dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
     this._geos.forEach((g) => g.dispose());
     this._mats.forEach((m) => m.dispose());
+    this._renderBatches.forEach(batch => batch.mesh.dispose());
+    this._skeletons.forEach(skeleton => skeleton.dispose());
     this.root.removeFromParent();
+    if (--activeRigs === 0) SHARED.forEach(geometry => geometry.dispose());
   }
 
   /* ───────────── build ───────────── */
@@ -244,12 +278,89 @@ export class Human {
   _b(parent, mat, size, p, rot, cast) { return this._m(parent, UNIT_BOX, mat, p, size, rot, cast); }
   _g(parent, x = 0, y = 0, z = 0) { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; }
 
+  _batchRenderParts() {
+    const groups = new Map();
+    this.root.traverse(mesh => {
+      if (!mesh.isMesh || mesh.isSkinnedMesh || mesh.children.length || !mesh.visible || mesh.material.transparent) return;
+      const geometryKey = mesh.geometry.parameters ? mesh.geometry.type + JSON.stringify(mesh.geometry.parameters) : mesh.geometry.uuid;
+      const key = geometryKey + mesh.material.uuid + mesh.castShadow + mesh.receiveShadow;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(mesh);
+    });
+    this._renderBatches = [];
+    this._renderInverse = new M4(); this._renderMatrix = new M4();
+    groups.forEach(parts => {
+      if (parts.length < 2) return;
+      const mesh = new THREE.InstancedMesh(parts[0].geometry, parts[0].material, parts.length);
+      mesh.castShadow = parts[0].castShadow; mesh.receiveShadow = parts[0].receiveShadow;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled = false;
+      parts.forEach(part => { part.visible = false; });
+      this.root.add(mesh);
+      this._renderBatches.push({ mesh, parts });
+    });
+    this._syncRenderParts();
+  }
+
+  _syncRenderParts() {
+    this.root.updateWorldMatrix(true, true);
+    this._renderInverse.copy(this.root.matrixWorld).invert();
+    for (const batch of this._renderBatches) {
+      batch.parts.forEach((part, i) => {
+        this._renderMatrix.multiplyMatrices(this._renderInverse, part.matrixWorld);
+        batch.mesh.setMatrixAt(i, this._renderMatrix);
+      });
+      batch.mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  _skinLimb(parent, upperLength, lowerLength, upperRadius, jointRadius, endRadius, material, colors = null) {
+    // One connected surface deforms through the joint; no disconnected capsule
+    // ends or visible ball joints when elbows and knees bend.
+    const length = upperLength + lowerLength;
+    const profile = [
+      [0.0001, -length - .012], [endRadius * .8, -length - .006], [endRadius, -length + .018],
+      [endRadius * 1.10, -length + lowerLength * .3], [jointRadius * .98, -upperLength - lowerLength * .28],
+      [jointRadius, -upperLength - .025], [jointRadius, -upperLength], [jointRadius * 1.04, -upperLength + .035],
+      [upperRadius * .94, -upperLength * .50], [upperRadius, -.045], [upperRadius * .85, .005], [.0001, .025],
+    ];
+    const geometry = lathe(profile, 32);
+    const position = geometry.attributes.position;
+    const indices = new Uint16Array(position.count * 4);
+    const weights = new Float32Array(position.count * 4);
+    const rgb = colors ? new Float32Array(position.count * 3) : null;
+    const color = new THREE.Color();
+    for (let i = 0; i < position.count; i++) {
+      const y = position.getY(i);
+      const lower = sstep(-.055, .055, -y - upperLength);
+      indices[i * 4 + 1] = 1;
+      weights[i * 4] = 1 - lower; weights[i * 4 + 1] = lower;
+      if (colors) {
+        color.copy(colors[0]).lerp(colors[1], sstep(-.012, .002, -y - upperLength));
+        color.toArray(rgb, i * 3);
+      }
+    }
+    geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(indices, 4));
+    geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(weights, 4));
+    if (rgb) geometry.setAttribute('color', new THREE.Float32BufferAttribute(rgb, 3));
+    const mesh = new THREE.SkinnedMesh(geometry, material);
+    mesh.castShadow = mesh.receiveShadow = this.o.shadows;
+    mesh.frustumCulled = false;
+    const upper = new THREE.Bone(), lower = new THREE.Bone();
+    lower.position.y = -upperLength; upper.add(lower); mesh.add(upper);
+    parent.add(mesh); mesh.updateWorldMatrix(true, true);
+    const skeleton = new THREE.Skeleton([upper, lower]);
+    mesh.bind(skeleton);
+    this._geos.push(geometry); this._skeletons.push(skeleton);
+    return lower;
+  }
+
   _build() {
     const o = this.o, b = o.body, out = o.outfit, acc = o.acc, f = o.gender === 'f';
     const suit = out.type === 'suit', lw = f ? 0.94 : 1;
     const M = (c, r, m, e) => this._mat(c, r, m, e);
-    const skin = M(o.skin, 0.48); // Natural soft skin sheen
-    const top = M(out.top, suit ? 0.65 : 0.78);
+    const skin = M(o.skin, .72, 0, { roughness: .72 });
+    const top = M(out.top, suit ? .82 : .92);
     const shirt = M(out.shirt, 0.80);
     const pants = M(out.pants, 0.75);
     const shoeM = M(out.shoes, suit ? 0.2 : 0.45, suit ? 0.15 : 0);
@@ -264,19 +375,18 @@ export class Human {
     const torsoG = this.torsoG = this._g(spine);
     const neck = this.neck = this._g(spine, 0, K.NECK_Y, 0);
     const head = this.head = this._g(neck, 0, K.HEAD_Y, 0);
-    const skull = this.skull = this._g(head, 0, 0.10, 0);
+    const skull = this.skull = this._g(head, 0, .09, 0);
 
     /* pelvis + belt */
-    this._e(hips, pants, [0.18 * b.hip, 0.125, 0.14], [0, -0.01, 0]);
-    if (!suit) this._m(hips, new THREE.CylinderGeometry(1, 1, 0.035, 32), M(0x18181b, 0.5), [0, 0.085, 0], [0.165 * b.hip, 1, 0.165 * b.hip * 0.75]);
+    this._e(hips, pants, [.16 * b.hip, .115, .118], [0, -.01, 0]);
 
     /* torso profile with realistic human volume and curvature */
     const prof = (grow, hem) => {
       const P = [
-        [0.165 * b.hip, -0.075], [0.168 * b.hip, -0.01], [0.148 * b.waist, 0.08], [0.162 * b.chest, 0.19],
-        [0.180 * b.chest * (f ? 1.05 : 1), 0.29], [0.188 * b.shoulder, 0.355], [0.162 * b.shoulder, 0.405], [0.098, 0.44], [0.062, 0.47]
+        [.159 * b.hip, -.075], [.16 * b.hip, -.01], [.142 * b.waist, .08], [.157 * b.chest, .19],
+        [.17 * b.chest, .28], [.179 * b.shoulder, .345], [.153 * b.shoulder, .391], [.094, .43], [.052, .455]
       ].map(([r, y]) => [r + grow, y]);
-      if (hem) P.unshift([0.185 * b.hip + grow, -0.17], [0.178 * b.hip + grow, -0.12]);
+      if (hem) P.unshift([.17 * b.hip + grow, -.115], [.169 * b.hip + grow, -.09]);
       return P;
     };
     const radiusAt = (y, grow) => {
@@ -286,9 +396,9 @@ export class Human {
     };
     const mkTorso = (grow, hem, mat) => { const g = lathe(prof(grow, hem), 36); g.scale(1, 1, 0.78); return this._m(torsoG, g, mat); };
     const zf = (y, grow = 0) => radiusAt(y, grow) * 0.78;
-    mkTorso(0, false, suit ? shirt : top);
+    mkTorso(0, !suit && out.type === 'sweater', suit ? shirt : top);
     this._e(spine, skin, [0.052, 0.068, 0.052], [0, NECK_BASE(), 0]);
-    this._m(neck, new THREE.CylinderGeometry(0.048, 0.055, 0.15, 24), skin, [0, 0.03, 0.004]);
+    this._m(neck, new THREE.CylinderGeometry(.039, .047, .12, 32), skin, [0, .025, .004]);
 
     if (suit) {
       mkTorso(0.014, true, top);
@@ -325,14 +435,16 @@ export class Human {
       const el = this._g(tw, 0, -K.UARM, 0);
       const fa = this._g(el);
       const wr = this._g(fa, 0, -K.FARM, 0);
-      this._e(sh, sleeve, [0.062 * lw, 0.065 * lw, 0.062 * lw], [0, -0.01, 0]);
-      this._m(tw, limbGeo(K.UARM + 0.01, 0.054 * lw * (suit ? 1.05 : 1), 0.044 * lw, 0.07, 32), sleeve, [0, 0.0, 0]);
+      this._e(sh, sleeve, [.053 * lw, .068 * lw, .054 * lw], [0, -.035, 0]);
       const rolled = !suit && out.type === 'shirt';
-      this._m(fa, limbGeo(K.FARM + 0.01, 0.043 * lw, 0.032 * lw, 0.10, 32), rolled ? skin : sleeve, [0, 0.005, 0]);
+      const armSkin = this._skinLimb(tw, K.UARM, K.FARM, .054 * lw, .043 * lw, .031 * lw,
+        rolled ? M(0xffffff, .8, 0, { vertexColors: true }) : sleeve,
+        rolled ? [new THREE.Color(out.top), new THREE.Color(o.skin)] : null);
       if (rolled) this._m(fa, new THREE.CylinderGeometry(0.046 * lw, 0.043 * lw, 0.045, 24), sleeve, [0, -0.02, 0]);
       if (suit) this._m(fa, new THREE.CylinderGeometry(0.035, 0.035, 0.03, 20), shirt, [0, -K.FARM + 0.02, 0]);
       const hand = this._hand(side, wr, skin);
-      const arm = { side, sh, tw, el, fa, wr, fingers: hand.fingers };
+      this._e(wr, skin, [.027 * lw, .026 * lw, .029 * lw], [0, -.005, 0]);
+      const arm = { side, sh, tw, el, fa, wr, fingers: hand.fingers, pole: new V3(), target: new V3(), skinBone: armSkin };
       if (side === 1 && acc.watch) {
         this._m(fa, new THREE.CylinderGeometry(0.036, 0.036, 0.025, 24), gold, [0, -K.FARM + 0.04, 0]);
         this._b(fa, M(0x0f172a, 0.2, 0.6), [0.009, 0.028, 0.028], [side * 0.036, -K.FARM + 0.04, 0]);
@@ -354,11 +466,10 @@ export class Human {
       const th = this._g(hips, side * K.HIP_W * (0.9 + 0.1 * hipK), 0, 0);
       const kn = this._g(th, 0, -K.THIGH, 0);
       const an = this._g(kn, 0, -K.SHIN, 0);
-      this._m(th, limbGeo(K.THIGH + 0.02, 0.092 * lw * hipK, 0.064 * lw, 0.08, 32), pants, [0, 0.01, 0]);
-      this._m(kn, limbGeo(K.SHIN + 0.01, 0.064 * lw, 0.046 * lw, 0.12, 32), pants, [0, 0.005, 0]);
+      const legSkin = this._skinLimb(th, K.THIGH, K.SHIN, .092 * lw * hipK, .064 * lw, .046 * lw, pants);
       this._m(kn, new THREE.CylinderGeometry(0.05 * lw, 0.052 * lw, 0.035, 24), pants, [0, -K.SHIN + 0.03, 0]);
       this._shoe(an, shoeM, soleM, suit);
-      this.legs.push({ side, th, kn, an, pole: new V3(side * 0.12, 0, 1) });
+      this.legs.push({ side, th, kn, an, pole: new V3(side * .12, 0, 1), skinBone: legSkin });
     }
 
     this._buildHead(skull, skin, acc);
@@ -368,8 +479,8 @@ export class Human {
   _applyShadows() {
     this.root.traverse((c) => {
       if (c.isMesh) {
-        c.castShadow = this.o.shadows;
-        c.receiveShadow = this.o.shadows;
+        c.castShadow = c.castShadow && this.o.shadows;
+        c.receiveShadow = c.receiveShadow && this.o.shadows;
       }
     });
   }
@@ -402,39 +513,48 @@ export class Human {
 
   _buildHead(skull, skin, acc) {
     const o = this.o, M = (c, r, m, e) => this._mat(c, r, m, e);
-    const lip = M(new THREE.Color(o.skin).lerp(new THREE.Color(0xb91c1c), 0.35).getHex(), 0.45);
-    const hairM = M(o.hair.color, 0.45); // Lustrous hair with nice specular
-    this._m(skull, headGeo(), skin);
-    for (const sd of [1, -1]) this._e(skull, skin, [0.010, 0.030, 0.018], [sd * 0.083, -0.006, -0.004], [0, sd * 0.3, 0]);
-    // nose
-    this._e(skull, skin, [0.009, 0.027, 0.013], [0, 0.0, headZ(0, 0) + 0.003], [0.3, 0, 0]);
-    this._e(skull, skin, [0.013, 0.012, 0.013], [0, -0.022, headZ(0, -0.022) + 0.011]);
-    for (const sd of [1, -1]) this._e(skull, skin, [0.007, 0.0075, 0.0065], [sd * 0.011, -0.025, headZ(0.011, -0.025) + 0.006]);
+    const lip = M(new THREE.Color(o.skin).lerp(new THREE.Color(0x934b50), .23).getHex(), .7);
+    const hairM = M(o.hair.color, .82);
+    const geometry = headGeo();
+    const colors = new Float32Array(geometry.attributes.position.count * 3);
+    const base = new THREE.Color(o.skin), blush = new THREE.Color(o.skin).lerp(new THREE.Color(0xc46b65), .16), color = new THREE.Color();
+    for (let i = 0; i < geometry.attributes.position.count; i++) {
+      const p = geometry.attributes.position;
+      const cheek = Math.exp(-(((Math.abs(p.getX(i)) - .045) / .025) ** 2 + ((p.getY(i) + .024) / .026) ** 2));
+      color.copy(base).lerp(blush, p.getZ(i) > 0 ? cheek : 0);
+      color.toArray(colors, i * 3);
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    this._m(skull, geometry, M(0xffffff, .72, 0, { vertexColors: true }));
+    for (const sd of [1, -1]) {
+      this._e(skull, skin, [.010, .025, .015], [sd * .085, -.006, -.004], [0, sd * .3, 0]);
+      this._e(skull, lip, [.003, .014, .007], [sd * .093, -.005, .002], null, false);
+    }
 
     // eyes
-    const eyeW = M(0xfbfbfb, 0.15), iris = M(o.eye, 0.25, 0.05), pupil = M(0x050505, 0.1), glint = M(0xffffff, 0.05, 0, { emissive: 0xffffff, emissiveIntensity: 0.9 });
+    const eyeW = M(0xe4dfd5, .4), iris = M(o.eye, .35), pupil = M(0x111014, .25), glint = M(0xffffff, .1, 0, { emissive: 0xffffff, emissiveIntensity: .2 });
     this.face = { balls: [], lids: [], brows: [], eyeRoot: [] };
     for (const sd of [1, -1]) {
       const ex = sd * 0.035, ey = 0.016, ez = headZ(ex, ey) - 0.0095;
       const eg = this._g(skull, ex, ey, ez);
       const ball = this._g(eg);
-      this._e(ball, eyeW, [0.013, 0.013, 0.013], [0, 0, 0], null, false);
-      this._e(ball, iris, [0.0075, 0.0075, 0.0036], [0, 0, 0.0112], null, false);
+      this._e(ball, eyeW, [.014, .0075, .013], [0, 0, 0], null, false);
+      this._e(ball, iris, [.0063, .0063, .003], [0, 0, .0112], null, false);
       this._e(ball, pupil, [0.0038, 0.0038, 0.002], [0, 0, 0.0128], null, false);
       this._e(ball, glint, [0.0018, 0.0018, 0.001], [0.0022, 0.0030, 0.0136], null, false);
-      const lidGeo = new THREE.SphereGeometry(1, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2);
-      const lid = this._m(eg, lidGeo, skin, [0, 0, 0], [0.0142, 0.0142, 0.0142], null, false);
-      this.face.balls.push(ball); this.face.lids.push(lid);
+      this.face.balls.push(ball); this.face.eyeRoot.push(eg);
+      const lidCurve = new THREE.CatmullRomCurve3([new V3(-.014, 0, .007), new V3(0, .008, .013), new V3(.014, 0, .007)]);
+      this._m(eg, new THREE.TubeGeometry(lidCurve, 16, .0013, 8, false), lip, [0, 0, 0], null, null, false);
       // brow
       const bg = this._g(skull, sd * 0.035, 0.053, headZ(sd * 0.035, 0.053) + 0.002);
-      const curve = new THREE.CatmullRomCurve3([new V3(-sd * 0.022, -0.003, -0.003), new V3(-sd * 0.006, 0.004, 0.001), new V3(sd * 0.012, 0.004, 0.001), new V3(sd * 0.025, -0.002, -0.004)]);
-      this._m(bg, new THREE.TubeGeometry(curve, 14, 0.0045, 6, false), M(new THREE.Color(o.hair.color).multiplyScalar(0.85).getHex(), 0.65), [0, 0, 0], [1, 0.8, 1], null, false);
+      const curve = new THREE.CatmullRomCurve3([new V3(-sd * .018, -.002, -.002), new V3(0, .002, .001), new V3(sd * .018, -.002, -.002)]);
+      this._m(bg, new THREE.TubeGeometry(curve, 16, .0025, 8, false), hairM, [0, 0, 0], [1, .8, 1], null, false);
       this.face.brows.push({ g: bg, sd, baseY: 0.053 });
     }
     // mouth
     const my = -0.052, mg = this._g(skull, 0, my, headZ(0, my) + 0.002);
-    const arc = this._m(mg, new THREE.TorusGeometry(0.017, 0.0038, 8, 18, Math.PI), lip, [0, 0.004, 0], [1, 0.35, 1], [0, 0, Math.PI], false);
-    const lower = this._e(mg, lip, [0.013, 0.0045, 0.006], [0, -0.007, -0.001], null, false);
+    const arc = this._m(mg, new THREE.TorusGeometry(.017, .0018, 12, 32, Math.PI), lip, [0, .004, 0], [1, .35, 1], [0, 0, Math.PI], false);
+    const lower = this._e(mg, lip, [.013, .002, .003], [0, -.003, -.001], null, false);
     const cavity = this._e(mg, M(0x230808, 0.9), [0.012, 0.011, 0.004], [0, -0.004, -0.002], null, false);
     this.face.mouth = { g: mg, arc, lower, cavity };
     if (acc.mustache) this._b(skull, M(o.hair.color, 0.75), [0.036, 0.008, 0.010], [0, -0.036, headZ(0, -0.036) + 0.004], [0.2, 0, 0]);
@@ -444,7 +564,7 @@ export class Human {
 
     // glasses
     if (acc.glasses) {
-      const fr = M(o.outfit.type === 'suit' ? 0xd4af37 : 0x1e293b, 0.25, 0.8), gl = M(0xc7d2fe, 0.05, 0, { transparent: true, opacity: 0.22, side: THREE.DoubleSide });
+      const fr = M(o.outfit.type === 'suit' ? 0xd4af37 : 0x1e293b, .35, .45), gl = M(0xe3e9f2, .1, 0, { transparent: true, opacity: .055, depthWrite: false, side: THREE.DoubleSide });
       for (const sd of [1, -1]) {
         const gz = headZ(sd * 0.035, 0.016) + 0.014;
         this._m(skull, new THREE.TorusGeometry(0.0245, 0.0022, 8, 26), fr, [sd * 0.035, 0.016, gz], [1, 0.88, 1], null, false);
@@ -461,14 +581,27 @@ export class Human {
         this._m(skull, new THREE.TorusGeometry(0.032, 0.0075, 10, 24), cu, [sd * 0.089, -0.006, -0.004], null, [0, Math.PI / 2, 0]);
       }
     }
+    // A room-sized shadow map cannot resolve millimetre-scale facial details;
+    // let their smooth normals shade the face without blocky self-shadow acne.
+    skull.traverse(mesh => { if (mesh.isMesh) mesh.receiveShadow = false; });
   }
 
   _hair(skull, hairM) {
     const st = this.o.hair.style;
     const cap = (sx, sy, sz, theta, tilt, y = 0.004, z = 0, bumps = 0) => {
-      const g = new THREE.SphereGeometry(1, 36, 24, 0, Math.PI * 2, 0, theta);
-      if (bumps) { const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), yy = p.getY(i), zz = p.getZ(i); const n = Math.sin(x * 38) * Math.sin(yy * 34 + 1.3) * Math.sin(zz * 36 + 0.7); p.setXYZ(i, x * (1 + bumps * n), yy * (1 + bumps * n), zz * (1 + bumps * n)); } g.computeVertexNormals(); }
-      return this._m(skull, g, hairM, [0, y, z], [HX * sx, HY * sy, HZ * sz], [tilt, 0, 0]);
+      const g = new THREE.SphereGeometry(1, 64, 40, 0, Math.PI * 2, 0, 1.6);
+      const p = g.attributes.position, uv = g.attributes.uv;
+      for (let i = 0; i < p.count; i++) {
+        const phi = uv.getX(i) * Math.PI * 2;
+        const front = Math.max(0, Math.sin(phi)), back = Math.max(0, -Math.sin(phi));
+        const edge = 1.70 - .58 * front + .28 * back;
+        const a = (1 - uv.getY(i)) * edge;
+        const xx = -Math.cos(phi) * Math.sin(a), yy = Math.cos(a), zz = Math.sin(phi) * Math.sin(a);
+        const wave = bumps ? Math.sin(phi * 11) * Math.sin(a * 13) * .025 : 0;
+        p.setXYZ(i, xx * (1 + wave), yy * (1 + wave), zz * (1 + wave));
+      }
+      g.computeVertexNormals();
+      return this._m(skull, g, hairM, [0, y, z], [HX * sx, HY * sy, HZ * sz]);
     };
     switch (st) {
       case 'bald': break;
@@ -494,6 +627,7 @@ export class Human {
     const o = this.o, s = this.s, t = this.t, T = (this.time += dt);
     const { hips, spine, neck, head, face } = this;
     for (const k in t) s[k] = damp(s[k], t[k], this.rate, dt);
+    this.talkingWeight = damp(this.talkingWeight, this.talking ? 1 : 0, 5, dt);
 
     /* movement → walk cycle */
     const pos = this.root.position;
@@ -503,10 +637,10 @@ export class Human {
     this._prev.copy(pos);
     this.speed = damp(this.speed, this.speedOverride ?? raw, 10, dt);
     const v = this.speed, sit = clamp(s.sit, 0, 1);
-    const walkW = (1 - sit) * sstep(0.06, 0.4, v);
+    const walkW = (1 - sit) * sstep(.06, .55, v);
     this.walkW = walkW;
     const S = clamp(0.28 + 0.34 * v, 0.28, 0.9), duty = 0.6, TAU = Math.PI * 2;
-    if (v > 0.03 && !sit) this.phase = (this.phase + dt * (v * duty / S)) % 1;
+    if (v > .03 && sit < .2) this.phase = (this.phase + dt * (v * duty / S)) % 1;
     const pL = this.phase, pR = (this.phase + 0.5) % 1;
     const idle = (1 - walkW) * (1 - sit);
     const br = Math.sin(T * 1.8 + o.seed);
@@ -514,14 +648,14 @@ export class Human {
     /* hips / spine — living weight shift and breathing */
     const hipStand = K.HIP_STAND - s.hipDrop;
     const hipY = lerp(lerp(hipStand, K.HIP_WALK, walkW), o.seatHeight, sit) + walkW * 0.02 * Math.cos(2 * TAU * (pL - 0.3)) + idle * 0.004 * br + sit * 0.003 * Math.sin(T * 1.9 + o.seed);
-    const sway = walkW * 0.015 * Math.cos(TAU * (pL - 0.3)) + idle * 0.012 * Math.sin(T * 0.45 + o.seed) + sit * 0.014 * Math.sin(T * 0.75 + o.seed);
+    const sway = walkW * .012 * Math.cos(TAU * (pL - .3)) + idle * .004 * Math.sin(T * .45 + o.seed) + sit * .003 * Math.sin(T * .75 + o.seed);
     const roll = -walkW * 0.035 * Math.cos(TAU * (pL - 0.8)) + idle * 0.012 * Math.sin(T * 0.45 + o.seed + 1) + sit * 0.012 * Math.sin(T * 0.65 + o.seed);
     const pYaw = -walkW * 0.09 * Math.cos(TAU * pL) + sit * 0.025 * Math.sin(T * 0.5 + o.seed);
     hips.position.set(sway, hipY, -0.03 * sit);
     hips.rotation.set(0.02 * walkW, pYaw, roll);
     hips.updateMatrix();
     const spX = s.spX + (0.012 + 0.008 * sit) * br + walkW * (0.04 + 0.02 * v);
-    const spY = s.spY + walkW * 0.19 * Math.cos(TAU * pL) + (0.04 * (1 - walkW * 0.8) + sit * 0.03) * Math.sin(T * 0.55 + o.seed);
+    const spY = s.spY + walkW * .085 * Math.cos(TAU * pL) + .012 * (1 - walkW) * Math.sin(T * .55 + o.seed);
     const spZ = s.spZ - roll * 0.6 + (0.008 + sit * 0.008) * Math.sin(T * 0.45 + o.seed + 2);
     spine.rotation.set(spX, spY, spZ);
     spine.updateMatrix();
@@ -533,8 +667,8 @@ export class Human {
     for (const leg of this.legs) {
       const sd = leg.side, p = sd > 0 ? pL : pR;
       const stX = sd * (K.HIP_W + s.stance), stZ = (sd > 0 ? 0.5 : -0.5) * s.stagger;
-      const sX = sd * 0.13, sZ = 0.42;
-      let x = lerp(stX, sX, sit), y = K.ANKLE, z = lerp(stZ, sZ, sit), pitch = 0;
+      const sX = sd * .115, sZ = o.seatedFootZ;
+      let x = lerp(stX, sX, sit), y = K.ANKLE + o.footHeight * sit, z = lerp(stZ, sZ, sit), pitch = 0;
       const yaw = sd * lerp(0.10, 0.15, sit);
       if (walkW > 0.001) {
         if (p < duty) {
@@ -551,6 +685,7 @@ export class Human {
       _tmp.set(x, y, z).applyMatrix4(this._invHips);
       const phi = solveLimb(leg.th, _tmp, leg.pole, 1, K.THIGH, K.SHIN);
       leg.kn.rotation.set(phi, 0, 0);
+      leg.skinBone.quaternion.copy(leg.kn.quaternion);
       _q1.copy(leg.th.quaternion).multiply(leg.kn.quaternion).invert();
       _q2.setFromEuler(_eu.set(pitch, yaw, 0, 'YXZ'));
       _q3.copy(hips.quaternion).invert().multiply(_q2);
@@ -561,9 +696,9 @@ export class Human {
     this._gazeUpdate(dt, T, hipY, spX, spY + pYaw, walkW, sit);
     const hy = this._headYaw, hp = this._headPit;
     const wob = 0.02 * Math.sin(T * 0.8 + o.seed) + 0.012 * Math.sin(T * 1.9);
-    const nod = s.talk * 0.05 * Math.sin(T * 3.0 + o.seed) + (this.talking ? 0.035 * Math.sin(T * 7.2) : 0);
+    const nod = s.talk * this.talkingWeight * .018 * Math.sin(T * 2.8 + o.seed);
     neck.rotation.set(0.35 * (hp + s.hdX) + nod * 0.4, 0.35 * hy - walkW * 0.5 * spY, 0);
-    head.rotation.set(0.65 * (hp + s.hdX) + nod + 0.015 * Math.sin(T * 0.6 + 2), 0.65 * hy + wob * (1 - sit * 0.4) - walkW * 0.5 * spY, s.hdZ + 0.02 * Math.sin(T * 0.5 + o.seed) * (1 - walkW) + s.panic * 0.02 * Math.sin(T * 31));
+    head.rotation.set(.65 * (hp + s.hdX) + nod + .008 * Math.sin(T * .6 + 2), .65 * hy + wob * (1 - sit * .4) - walkW * .5 * spY, s.hdZ + .008 * Math.sin(T * .5 + o.seed) * (1 - walkW));
     this._face(dt, T);
 
     /* arms */
@@ -571,6 +706,7 @@ export class Human {
     for (const arm of this.arms) this._arm(arm, T, pL, pR, walkW);
 
     if (this.badge) this.badge.rotation.x = 0.05 * Math.sin(T * 1.3) + walkW * 0.14 * Math.sin(2 * TAU * pL);
+    this._syncRenderParts();
   }
 
   _gazeUpdate(dt, T, hipY, spX, bodyYaw, walkW, sit = 0) {
@@ -580,7 +716,7 @@ export class Human {
       const tp = this.lookTarget.isObject3D ? this.lookTarget.getWorldPosition(_w) : _w.copy(this.lookTarget);
       this.root.updateWorldMatrix(true, false);
       this.root.worldToLocal(_w);
-      const hy = hipY + K.SPINE_Y + K.NECK_Y + K.HEAD_Y + 0.10;
+      const hy = hipY + K.SPINE_Y + K.NECK_Y + K.HEAD_Y + .09;
       const dx = _w.x, dy = _w.y - hy, dz = _w.z - 0.03;
       let ay = Math.atan2(dx, dz) - bodyYaw;
       ay = Math.atan2(Math.sin(ay), Math.cos(ay));
@@ -588,10 +724,10 @@ export class Human {
         yaw = ay;
         pit = Math.atan2(-dy, Math.hypot(dx, dz)) - spX;
       }
-      if (sit > 0.5) {
+      if (sit > .5 && this.s.type > .1) {
         // Natural reading scan across computer monitor
-        const scanYaw = Math.sin(T * 1.4 + this.o.seed * 3) * 0.12 + Math.sin(T * 0.4 + this.o.seed) * 0.05;
-        const scanPit = Math.sin(T * 0.85 + this.o.seed * 2) * 0.06;
+        const scanYaw = Math.sin(T * .7 + this.o.seed * 3) * .035;
+        const scanPit = Math.sin(T * .55 + this.o.seed * 2) * .018;
         yaw += scanYaw;
         pit += scanPit;
       }
@@ -614,7 +750,7 @@ export class Human {
     const blink = bl.age < 0.15 ? Math.sin(Math.PI * bl.age / 0.15) : 0;
     const open = clamp(s['e.lid'] * (1 - blink), 0, 1.3);
     for (let i = 0; i < 2; i++) {
-      f.lids[i].rotation.x = 1.45 - open * 2.0;
+      f.eyeRoot[i].scale.y = Math.max(.025, open);
       f.balls[i].rotation.set(this._eyePit, this._eyeYaw, 0);
     }
     for (const b of f.brows) {
@@ -622,11 +758,13 @@ export class Human {
       b.g.rotation.z = b.sd * s['e.furrow'] * 0.40 - b.sd * Math.max(0, s['e.brow']) * 0.14;
     }
     let mo = s['e.mouth'];
-    if (this.talking) mo = Math.max(mo, 0.16 + 0.48 * Math.abs(Math.sin(T * 9.6) * Math.sin(T * 5.4 + 1)));
+    mo = Math.max(mo, this.talkingWeight * (.08 + .22 * Math.abs(Math.sin(T * 8.2) * Math.sin(T * 4.8 + 1))));
+    this._mouthOpen = damp(this._mouthOpen, mo, 16, dt);
+    mo = this._mouthOpen;
     const sm = s['e.smile'], m = f.mouth;
     const curv = Math.abs(sm) < 0.06 ? 0.06 : sm * 0.9;
     m.arc.scale.set(1 + 0.25 * sm, curv, 1);
-    m.lower.position.y = -0.007 - mo * 0.013; m.lower.scale.x = 0.013 * (1 - mo * 0.2);
+    m.lower.position.y = -.003 - mo * .010; m.lower.scale.x = .013 * (1 - mo * .2);
     m.cavity.visible = mo > 0.04;
     m.cavity.scale.set(0.012 * (0.8 + mo * 0.4), Math.max(0.001, mo * 0.015), 0.004);
   }
@@ -634,9 +772,9 @@ export class Human {
   _arm(a, T, pL, pR, walkW) {
     const s = this.s, o = this.o, sd = a.side, k = sd > 0 ? 'L.' : 'R.', p = sd > 0 ? pL : pR;
     const c = Math.cos(2 * Math.PI * p), sw = s[k + 'swing'] * walkW;
-    const talk = s.talk, ph = sd > 0 ? 0 : 2.1;
-    const trem = s.panic * 0.025 * Math.sin(T * 33 + ph);
-    let sX = s[k + 'sX'] + 0.58 * sw * c - talk * 0.32 * (0.5 + 0.5 * Math.sin(T * 2.1 + ph)) + trem;
+    const talk = s.talk * this.talkingWeight, ph = sd > 0 ? 0 : 2.1;
+    const trem = 0;
+    let sX = s[k + 'sX'] + .30 * sw * c - talk * .12 * (.5 + .5 * Math.sin(T * 1.5 + ph));
     let sZ = s[k + 'sZ'] + talk * 0.12 * Math.sin(T * 1.4 + ph) + walkW * 0.03;
     let tw = s[k + 'tw'];
     let el = s[k + 'el'] - sw * (0.15 + 0.4 * Math.max(0, -c)) - talk * 0.50 * (0.5 + 0.5 * Math.sin(T * 2.4 + ph + 1)) + trem;
@@ -654,7 +792,8 @@ export class Human {
     // Dynamic, expressive typing animation
     const ik = clamp(s[k + 'ik'], 0, 1);
     let tp = 0;
-    const strikes = [0, 0, 0, 0, 0];
+    const strikes = this._strikes;
+    strikes.fill(0);
     if (s.type > 0.01) {
       const burst = sstep(-0.25, 0.35, Math.sin(T * 0.9 + o.seed * 3) + 0.4 * Math.sin(T * 2.5 + o.seed));
       tp = s.type * (0.45 + 0.55 * burst);
@@ -667,20 +806,24 @@ export class Human {
     if (ik > 0.001) {
       const kb = o.keyboard;
       // Hands visibly shift across the keyboard keys and bounce with keystrokes
-      const handShiftX = (Math.sin(T * 1.8 + sd * 1.5) * 0.038 + (strikes[0] - strikes[4]) * 0.016) * tp;
-      const handBounceY = (strikes[1] + strikes[2] + strikes[3]) * 0.013 * tp;
-      const handShiftZ = Math.sin(T * 2.2 + sd) * 0.018 * tp;
+      const handShiftX = (Math.sin(T * 1.4 + sd * 1.5) * .016 + (strikes[0] - strikes[4]) * .005) * tp;
+      const handBounceY = (strikes[1] + strikes[2] + strikes[3]) * .0025 * tp;
+      const handShiftZ = Math.sin(T * 1.5 + sd) * .007 * tp;
+      const rest = o.restHands, table = o.tableHands;
+      const meeting = s.talk;
+      // Listening hands rest on the table. Only the speaker lifts one hand;
+      // typing targets the physical keyboard; resting hands settle on thighs.
+      const gesture = talk * (sd > 0 ? .35 : 1) * (.5 + .5 * Math.sin(T * 1.3 + ph));
       _tmp.set(
-        sd * 0.11 + handShiftX,
-        kb[1] + handBounceY,
-        kb[2] - 0.035 + handShiftZ
+        sd * .105 + handShiftX + gesture * sd * .018,
+        lerp(lerp(rest[1], table[1] + gesture * .065, meeting), kb[1] + handBounceY, s.type),
+        lerp(lerp(rest[2], table[2] - gesture * .025, meeting), kb[2] - .06 + handShiftZ, s.type)
       ).applyMatrix4(this._invSpine);
-      a.pole = a.pole || new V3();
-      a.pole.set(sd * 0.55, -0.35, -1);
+      a.pole.set(sd * .35, -.9, .04);
       const phi = solveLimb(a.sh, _tmp, a.pole, -1, K.UARM, K.FARM);
       _ik.sh.copy(a.sh.quaternion);
       _ik.el.setFromAxisAngle(_X, phi);
-      _q1.copy(_ik.sh).multiply(_ik.el).invert();
+      _q1.copy(this.hips.quaternion).multiply(this.spine.quaternion).multiply(_ik.sh).multiply(_ik.el).invert();
       _ik.wr.copy(_q1).multiply(sd > 0 ? HAND_L : HAND_R);
       ikQ = _ik;
     }
@@ -691,12 +834,13 @@ export class Human {
       a.tw.quaternion.slerp(_I, w); a.fa.quaternion.slerp(_I, w);
       a.el.quaternion.slerp(ikQ.el, w); a.wr.quaternion.slerp(ikQ.wr, w);
     }
+    a.skinBone.quaternion.copy(a.el.quaternion).multiply(a.fa.quaternion);
 
     // fingers
     const base = s[k + 'curl'], pt = s[k + 'point'];
     for (let i = 0; i < 5; i++) {
       const f = a.fingers[i];
-      let cu = base + tp * 0.75 * strikes[i] - (tp > 0 ? 0.08 : 0) + 0.04 * Math.sin(T * 1.1 + i + ph);
+      let cu = base + tp * .24 * strikes[i] - (tp > 0 ? .04 : 0) + .015 * Math.sin(T * 1.1 + i + ph);
       if (i === 1) cu *= 1 - pt; else if (i > 1) cu += pt * 0.8;
       if (f.th) { f.p.rotation.z = f.base - sd * cu * 0.55; f.d.rotation.z = -sd * cu * 0.6; }
       else { f.p.rotation.z = -sd * cu * 1.25; f.d.rotation.z = -sd * cu * 1.05; }
