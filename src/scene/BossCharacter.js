@@ -36,6 +36,8 @@ export class BossCharacter {
 
         this.officeScene = null;
         this.playerCamera = null;
+        this._isLookingAtPlayer = false;
+        this._walkSpeed = 2.7;
 
         // Path coordinates & initial placement
         this._currentPathIndex = 0;
@@ -78,6 +80,10 @@ export class BossCharacter {
         this.playerCamera = camera;
     }
 
+    setWalkSpeed(speed) {
+        this._walkSpeed = speed;
+    }
+
     /* ── Path Coordinates ────────────────────────────────────────── */
 
     _getPathState(pathIndex, progress) {
@@ -108,6 +114,9 @@ export class BossCharacter {
         this.human.setTalking(false);
         if (this.playerCamera) {
             this.human.lookAt(this.playerCamera);
+            this._isLookingAtPlayer = true;
+        } else {
+            this._isLookingAtPlayer = false;
         }
     }
 
@@ -115,6 +124,7 @@ export class BossCharacter {
         this.group.visible = false;
         this.human.setSpeed(0);
         this.human.lookAt(null);
+        this._isLookingAtPlayer = false;
         this.human.setTalking(false);
     }
 
@@ -131,6 +141,7 @@ export class BossCharacter {
     }
 
     lookAt(target) {
+        this._isLookingAtPlayer = (target !== null && target === this.playerCamera);
         this.human.lookAt(target);
     }
 
@@ -145,11 +156,13 @@ export class BossCharacter {
     /**
      * Update boss position along walk path and map poses to BossSystem states.
      * @param {number} progress – 0 to 1
-     * @param {number} dt – seconds
-     * @param {string} [gameState]
-     * @param {number} [suspicion]
+     * @param {number} [dt=0.016] – seconds
+     * @param {string} [gameState='']
+     * @param {number} [suspicion=0]
+     * @param {boolean} [isPaused=false]
+     * @param {string} [pauseType='desk']
      */
-    updateWalk(progress, dt = 0.016, gameState = '', suspicion = 0) {
+    updateWalk(progress, dt = 0.016, gameState = '', suspicion = 0, isPaused = false, pauseType = 'desk') {
         if (!this.group.visible) return;
 
         const state = this._getPathState(this._currentPathIndex, progress);
@@ -182,42 +195,153 @@ export class BossCharacter {
         this.group.position.set(state.x + this._avoidance.x, 0, state.z + this._avoidance.y);
 
         // Smooth body rotation toward path heading
-        let angleDiff = state.bodyRotY - this.group.rotation.y;
+        let targetRotY = state.bodyRotY;
+        if (isPaused && pauseType === 'desk') {
+            // Face toward player cubicle at (0, -1.05) when halted directly in front of desk
+            const dx = 0 - this.group.position.x;
+            const dz = -1.05 - this.group.position.z;
+            targetRotY = Math.atan2(dx, dz);
+        }
+
+        let angleDiff = targetRotY - this.group.rotation.y;
         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
         this.group.rotation.y += angleDiff * (1 - Math.exp(-7.7 * dt));
 
-        // Map game state to HumanoidRig poses
+        // Map game state and pauses to HumanoidRig poses
         if (gameState === 'GAMEOVER_FIRED' || suspicion >= 100) {
             // BUSTED state: point, scowl, and talk
             this.human.setPose('point');
             this.human.setExpression('scowl');
             this.human.setTalking(true);
-            if (this.playerCamera) this.human.lookAt(this.playerCamera);
+            if (this.playerCamera) {
+                this.human.lookAt(this.playerCamera);
+                this._isLookingAtPlayer = true;
+            }
         } else if (suspicion > 30) {
-            // SUSPICIOUS: stern interrogate pose and scowl
+            // SUSPICIOUS: stern interrogate pose and scowl, locked onto player
             this.human.setPose('interrogate');
             this.human.setExpression('scowl');
             this.human.setTalking(false);
-            if (this.playerCamera) this.human.lookAt(this.playerCamera);
+            if (this.playerCamera) {
+                this.human.lookAt(this.playerCamera);
+                this._isLookingAtPlayer = true;
+            }
+        } else if (isPaused) {
+            // STOPPED / LINGERING inspection
+            if (pauseType === 'desk') {
+                this.human.setPose('interrogate');
+                this.human.setTalking(true);
+                this.human.setExpression('scowl');
+                if (this.playerCamera) {
+                    this.human.lookAt(this.playerCamera);
+                    this._isLookingAtPlayer = true;
+                }
+            } else {
+                // Hesitant mid-aisle pause: looks around suspiciously
+                this.human.setPose('carry');
+                this.human.setTalking(false);
+                this.human.setExpression('scowl');
+                if (this.playerCamera) {
+                    this.human.lookAt(this.playerCamera);
+                    this._isLookingAtPlayer = true;
+                }
+            }
         } else if (progress >= 0.44 && progress <= 0.56) {
             // AT_DESK: interrogate pose, looking down at workstation / camera, talking
             this.human.setPose('interrogate');
             this.human.setTalking(true);
             this.human.setExpression('neutral');
-            if (this.playerCamera) this.human.lookAt(this.playerCamera);
+            if (this.playerCamera) {
+                this.human.lookAt(this.playerCamera);
+                this._isLookingAtPlayer = true;
+            }
         } else if (progress < 0.44) {
             // APPROACHING: carry with briefcase, looking toward player
             this.human.setPose('carry');
             this.human.setTalking(false);
             this.human.setExpression('neutral');
-            if (this.playerCamera) this.human.lookAt(this.playerCamera);
+            if (this.playerCamera) {
+                this.human.lookAt(this.playerCamera);
+                this._isLookingAtPlayer = true;
+            }
         } else {
-            // RETURNING: patrol pose with hands behind back, looking forward
+            // RETURNING / DEPARTING: patrol pose with hands behind back, looking forward toward exit
             this.human.setPose('patrol');
             this.human.setTalking(false);
             this.human.setExpression('neutral');
             this.human.lookAt(null);
+            this._isLookingAtPlayer = false;
         }
+    }
+
+    /**
+     * Determines whether the boss currently has direct line of sight to the player's monitor screen.
+     * Takes into account:
+     *  - Room bounds (Z < -7 in back corridor or |X| > 8.2 outside door = cannot see)
+     *  - Returning/departing phase (at progress > 0.56 the boss is walking away toward the exit)
+     *  - Physical body orientation (dot product with direction to monitor)
+     *  - Head gaze target (is the boss actually looking at the player?)
+     * @param {number} [progress=0]
+     * @param {number} [suspicion=0]
+     * @returns {boolean}
+     */
+    canSeePlayerScreen(progress = 0, suspicion = 0) {
+        if (!this.group || !this.group.visible) return false;
+
+        const bx = this.group.position.x;
+        const bz = this.group.position.z;
+
+        // 1. Outside the visible office room or far down the back hallway
+        if (bz < -7.0) return false;
+        if (bx < -8.2 || bx > 8.2) return false;
+
+        // 2. High suspicion: boss has already locked onto player red-handed
+        if (suspicion >= 70) return true;
+
+        // 3. Returning / departing: boss has walked past the desk and is walking away towards exit
+        if (progress > 0.56 && suspicion < 40) {
+            return false;
+        }
+
+        // 4. Orientation / Field of View check:
+        // Screen is at (0, 1.2, -1.05), facing towards +Z.
+        const dx = 0 - bx;
+        const dz = -1.05 - bz;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 12.0) return false;
+
+        const dirX = dx / Math.max(0.001, dist);
+        const dirZ = dz / Math.max(0.001, dist);
+
+        // World forward direction of the boss (HumanoidRig faces +Z in local space)
+        const forwardX = Math.sin(this.group.rotation.y);
+        const forwardZ = Math.cos(this.group.rotation.y);
+
+        // Dot product between boss forward direction and vector to the screen
+        const facingDot = forwardX * dirX + forwardZ * dirZ;
+
+        // If the boss is facing away (facingDot < 0.15, angle > 81 degrees):
+        // He can only see the screen if his head is actively turned looking at the player.
+        // If he's looking straight ahead or not looking at the player, he's turned away!
+        if (facingDot < 0.15) {
+            if (!this._isLookingAtPlayer) {
+                return false;
+            }
+            // Even with head turned, if body is facing completely away (dot < -0.35),
+            // a human neck cannot turn 180 degrees backwards while walking away.
+            if (facingDot < -0.35) {
+                return false;
+            }
+        }
+
+        // 5. Frustum boundary check
+        const zDistCamToWall = 1.8 - (-2.5);
+        const zDistCamToBoss = 1.8 - bz;
+        const maxVisibleX = 1.8 * (zDistCamToBoss / zDistCamToWall);
+        const bodyMargin = 1.2;
+        const limitX = maxVisibleX + bodyMargin;
+
+        return (bx >= -limitX && bx <= limitX);
     }
 
     dispose() {

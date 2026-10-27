@@ -286,7 +286,9 @@ export class Game {
                 this.lighting.stopWarning();
                 this.hud.hideAlert();
                 this.boss.show();
-                this.bossSystem.presenceTime = this.boss.pathLength / 1.35;
+                const walkSpeed = this.bossSystem.walkSpeed || (2.3 + Math.random() * 1.2);
+                this.bossSystem.presenceTime = this.boss.pathLength / walkSpeed;
+                this.boss.setWalkSpeed(walkSpeed);
                 this.monitor.setLedState('alert');
                 break;
 
@@ -592,15 +594,21 @@ export class Game {
         this.hud.setPatrol(this.bossSystem.phase, this.bossSystem.warningRemaining);
 
         if (this.bossSystem.phase === 'present') {
-            this.boss.updateWalk(this.bossSystem.bossProgress, dt, this.fsm.current, this.suspicion);
-
+            this.boss.updateWalk(
+                this.bossSystem.bossProgress,
+                dt,
+                this.fsm.current,
+                this.suspicion,
+                this.bossSystem.isPaused,
+                this.bossSystem.pauseType
+            );
         }
         this.boss.update(dt);
         this.officeScene.suspicion = this.suspicion;
         this.officeScene.update(dt);
 
         // ── Dynamic Suspicion Meter ──────────────
-        const bossSeesScreen = (this.fsm.current === GameState.BOSS_PRESENT && this._showingArcade && this.isBossVisible());
+        const bossSeesScreen = (this.fsm.current === GameState.BOSS_PRESENT && this._showingArcade && this.boss.canSeePlayerScreen(this.bossSystem.bossProgress, this.suspicion));
 
         if (bossSeesScreen) {
             // Suspicion rises quickly
@@ -663,19 +671,8 @@ export class Game {
     }
 
     isBossVisible() {
-        if (!this.boss.group.visible) return false;
-
-        const bx = this.boss.group.position.x;
-        const bz = this.boss.group.position.z;
-
-        const zDistCamToWall = 1.8 - (-2.5);
-        const zDistCamToBoss = 1.8 - bz;
-
-        const maxVisibleX = 1.8 * (zDistCamToBoss / zDistCamToWall);
-        const bodyMargin = 1.2;
-        const limitX = maxVisibleX + bodyMargin;
-
-        return (bx >= -limitX && bx <= limitX);
+        if (!this.boss || !this.boss.group || !this.boss.group.visible) return false;
+        return this.boss.canSeePlayerScreen(this.bossSystem ? this.bossSystem.bossProgress : 0, this.suspicion);
     }
 
     /* ── Render ────────────────────────────────────────── */

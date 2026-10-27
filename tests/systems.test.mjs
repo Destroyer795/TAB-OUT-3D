@@ -121,3 +121,51 @@ test('career tiers provide real perks and promotion fires once per threshold', (
     assert.ok(CAREER_RANKS.at(-1).coffeeCooldown < CAREER_RANKS[0].coffeeCooldown);
     assert.ok(CAREER_RANKS.at(-1).coffeeBoost > CAREER_RANKS[0].coffeeBoost);
 });
+
+test('boss visit dynamics randomize speeds (>=2.3 m/s) and support desk/hesitant pauses', () => {
+    const boss = new BossSystem();
+    const speeds = [];
+    const pauseTypes = new Set();
+    for (let i = 0; i < 20; i++) {
+        boss._setupVisitDynamics();
+        speeds.push(boss.walkSpeed);
+        pauseTypes.add(boss.pauseType);
+        assert.ok(boss.walkSpeed >= 2.2 && boss.walkSpeed <= 3.7);
+    }
+    // High variance in speed
+    assert.ok(Math.max(...speeds) - Math.min(...speeds) > 0.5);
+    // Covers pause variations
+    assert.ok(pauseTypes.has('desk') || pauseTypes.has('hesitant') || pauseTypes.has('none'));
+});
+
+test('boss pauses in place during presence and maintains progress until pause expires', () => {
+    const boss = new BossSystem();
+    boss._phase = 'present';
+    boss._phaseTimer = 0;
+    boss._bossProgress = 0;
+    boss.presenceTime = 4.0;
+    boss._willPause = true;
+    boss._hasPaused = false;
+    boss._pauseTarget = 0.50;
+    boss._pauseDuration = 1.0;
+    boss._pauseTimer = 0;
+
+    // Advance to 50% progress (2.0s of walking)
+    boss.update(2.0);
+    assert.ok(Math.abs(boss.bossProgress - 0.5) < 0.05);
+
+    // Now it should enter paused state
+    boss.update(0.4);
+    assert.equal(boss.isPaused, true);
+    assert.ok(Math.abs(boss.bossProgress - 0.5) < 0.05);
+
+    // Finish pause duration (0.7s more)
+    boss.update(0.7);
+    assert.equal(boss.isPaused, false);
+    assert.equal(boss._hasPaused, true);
+
+    // Resumes walking to completion
+    boss.update(2.1);
+    assert.equal(boss.phase, 'idle');
+});
+
