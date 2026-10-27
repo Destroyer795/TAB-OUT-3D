@@ -60,6 +60,9 @@ export class SpreadsheetMode {
         this._updateTimer = 0;
         this._popups = [];
         this._totalCrunched = 0;
+        this.revenue = 0;
+        this._sinceCrunch = 10;
+        this._streak = 0;
     }
 
     reset() {
@@ -70,6 +73,11 @@ export class SpreadsheetMode {
         this._updateTimer = 0;
         this._popups = [];
         this._totalCrunched = 0;
+        this.revenue = 0;
+        this._sinceCrunch = 10;
+        this._streak = 0;
+        this._cursorRow = 3;
+        this._cursorCol = 2;
     }
 
     /**
@@ -77,7 +85,14 @@ export class SpreadsheetMode {
      * Generates active number crunching productivity boost!
      */
     crunchNumber() {
+        // Bound rewards to physical keystrokes, regardless of frame rate.
+        if (this._sinceCrunch < .055) return;
+        this._streak = this._sinceCrunch < .55 ? Math.min(8, this._streak + 1) : 1;
+        this._sinceCrunch = 0;
         this._totalCrunched++;
+        const revenue = 1200 + this._streak * 350;
+        const points = 5 + this._streak * 2;
+        this.revenue += revenue;
         AudioManager.playMechanicalKey();
 
         // Advance cursor
@@ -101,7 +116,7 @@ export class SpreadsheetMode {
         this._chartData[chartIdx] = Math.min(100, this._chartData[chartIdx] + 12);
 
         // Spawn corporate profit popup
-        const randJargon = JARGON_POPUPS[Math.floor(Math.random() * JARGON_POPUPS.length)];
+        const randJargon = this._streak >= 4 ? `+$${revenue.toLocaleString()} REVENUE · +${points} PTS` : JARGON_POPUPS[this._totalCrunched % JARGON_POPUPS.length];
         this._popups.push({
             text: randJargon,
             x: ROW_HEADER_WIDTH + this._cursorCol * COL_WIDTH + COL_WIDTH / 2,
@@ -111,13 +126,14 @@ export class SpreadsheetMode {
         });
 
         // Emit work done for Game productivity recovery bonus
-        EventBus.emit('spreadsheetWorkDone', { boost: 2.2 });
+        EventBus.emit('spreadsheetWorkDone', { boost: 2.2 + this._streak * .15, points, revenue });
     }
 
     /**
      * @param {number} dt
      */
     update(dt) {
+        this._sinceCrunch += dt;
         this._typingTimer += dt;
         this._updateTimer += dt;
 
@@ -331,6 +347,22 @@ export class SpreadsheetMode {
             ctx.textAlign = 'center';
             ctx.fillText(`M${i + 1}`, bx + barW / 2, baseY + 14);
         }
+
+        // Animated forecast line across the bars, driven by audited records.
+        ctx.strokeStyle = '#00a6ba'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        this._chartData.forEach((value, i) => {
+            const x = chartX + 31 + i * (barW + gap);
+            const y = baseY - value * .75 - 5;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke(); ctx.lineWidth = 1;
+        ctx.textAlign = 'left'; ctx.fillStyle = '#107c41';
+        ctx.font = 'bold 16px "Segoe UI", sans-serif';
+        ctx.fillText(`VERIFIED REVENUE  $${this.revenue.toLocaleString()}`, 40, H - 70);
+        ctx.font = '12px "Segoe UI", sans-serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText(this._streak >= 4 ? 'EMPLOYEE OF THE MONTH PACE // keep typing for bonuses' : 'Your commitment to looking busy is being quantified.', 40, H - 48);
 
         // ── Floating Profit Popups ────────────────────
         for (const p of this._popups) {

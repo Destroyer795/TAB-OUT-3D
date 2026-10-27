@@ -42,6 +42,7 @@ export class BossSystem {
 
     get bossProgress() { return this._bossProgress; }
     get phase()        { return this._phase; }
+    get warningRemaining() { return this._phase === 'warning' ? Math.max(0, this.warningTime - this._phaseTimer) : 0; }
     get isPaused()     { return this._pauseTimer > 0; }
 
     /**

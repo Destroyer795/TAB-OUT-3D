@@ -54,6 +54,8 @@ export class ArcadeGame {
         /* ── Gameplay stats ───────────────────────────── */
         this.score           = 0;
         this.combo           = 1;
+        this.comboTimer      = 0;
+        this.shipVelocity    = 0;
         this.speed           = 270;
         this.spawnTimer      = 0;
         this.spawnInterval   = 0.88;
@@ -93,6 +95,8 @@ export class ArcadeGame {
         this.popups.length       = 0;
         this.particles.length    = 0;
         this.combo        = 1;
+        this.comboTimer = 0;
+        this.shipVelocity = 0;
         this.score        = 0;
         this.speed        = 270;
         this.spawnTimer   = 0;
@@ -132,7 +136,7 @@ export class ArcadeGame {
         this.elapsedTime += dt;
 
         // Difficulty progression
-        const baseSpeed = 270 + this.elapsedTime * 9;
+        const baseSpeed = Math.min(620, 270 + this.elapsedTime * 6);
         const speedBoost = this.nitroTimer > 0 ? 1.7 : 1.0;
         this.speed = baseSpeed * speedBoost;
 
@@ -152,7 +156,16 @@ export class ArcadeGame {
 
         // Ship visual interpolation & bank easing
         const targetX = this._laneX(this.shipLane);
-        this.shipVisualX += (targetX - this.shipVisualX) * Math.min(1, dt * 22);
+        // Critically damped steering: acceleration and braking follow the same
+        // response at 30, 60, or 144 Hz; substeps avoid spring overshoot.
+        const steps = Math.max(1, Math.ceil(dt / .008));
+        const h = dt / steps;
+        for (let i = 0; i < steps; i++) {
+            this.shipVelocity += ((targetX - this.shipVisualX) * 900 - this.shipVelocity * 60) * h;
+            this.shipVisualX += this.shipVelocity * h;
+        }
+        this.comboTimer = Math.max(0, this.comboTimer - dt);
+        if (this.comboTimer === 0) this.combo = 1;
         this.shipTilt += (0 - this.shipTilt) * Math.min(1, dt * 10);
 
         // Spawning
@@ -344,14 +357,15 @@ export class ArcadeGame {
                 maxLife: 0.6,
                 color: '#00ff88'
             });
-            this.combo++;
+            this.combo = Math.min(8, this.combo + 1);
+            this.comboTimer = 7;
             EventBus.emit('arcadeCollect', { combo: this.combo });
         } else if (type === 'shield') {
             this.hasShield = true;
             AudioManager.playPowerupShield();
             this._spawnCollectExplosion(collX, coll.y, 190);
             this.popups.push({
-                text: 'SHIELD ONLINE',
+                text: 'AD BLOCKER ONLINE',
                 x: collX,
                 y: coll.y - 15,
                 life: 0.9,
@@ -577,7 +591,7 @@ export class ArcadeGame {
         // Active Powerup Badges
         let badgeY = 25;
         if (this.hasShield) {
-            this._drawStatusBadge(ctx, 25, badgeY, 'SHIELD // ONLINE', '#00e5ff');
+            this._drawStatusBadge(ctx, 25, badgeY, 'AD BLOCKER // ONLINE', '#00e5ff');
             badgeY += 28;
         }
         if (this.nitroTimer > 0) {
@@ -605,6 +619,8 @@ export class ArcadeGame {
             ctx.shadowColor = comboColor;
             ctx.shadowBlur = 6;
             ctx.fillText(`COMBO MULTIPLIER x${this.combo}`, W - 25, 62);
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(W - 257, 75, 232, 5);
+            ctx.fillStyle = comboColor; ctx.fillRect(W - 257, 75, 232 * this.comboTimer / 7, 5);
             ctx.shadowBlur = 0;
         }
 

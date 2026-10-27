@@ -6,12 +6,12 @@ import EventBus from '../core/EventBus.js';
 import AudioManager from '../audio/AudioManager.js';
 
 export const CAREER_RANKS = [
-    { score: 0,     title: 'Intern',              code: 'LVL 01', bonus: 0 },
-    { score: 1000,  title: 'Junior Analyst',      code: 'LVL 02', bonus: 200 },
-    { score: 2500,  title: 'Operations Lead',     code: 'LVL 03', bonus: 500 },
-    { score: 5000,  title: 'Senior Strategist',   code: 'LVL 04', bonus: 1000 },
-    { score: 10000, title: 'Executive Director',  code: 'LVL 05', bonus: 2500 },
-    { score: 20000, title: 'Chief Executive',     code: 'LVL 06', bonus: 5000 },
+    { score: 0, title: 'Intern', code: 'LVL 01', bonus: 0, coffeeBoost: 35, coffeeCooldown: 22, perk: 'Coffee privileges' },
+    { score: 1000, title: 'Junior Analyst', code: 'LVL 02', bonus: 200, coffeeBoost: 38, coffeeCooldown: 21, perk: 'Better beans · +38 energy' },
+    { score: 2500, title: 'Operations Lead', code: 'LVL 03', bonus: 500, coffeeBoost: 40, coffeeCooldown: 19, perk: 'Express refill · 19s coffee' },
+    { score: 5000, title: 'Senior Strategist', code: 'LVL 04', bonus: 1000, coffeeBoost: 45, coffeeCooldown: 18, perk: 'Double espresso · +45 energy' },
+    { score: 10000, title: 'Executive Director', code: 'LVL 05', bonus: 2500, coffeeBoost: 50, coffeeCooldown: 16, perk: 'Executive roast · +50 energy' },
+    { score: 20000, title: 'Chief Executive', code: 'LVL 06', bonus: 5000, coffeeBoost: 60, coffeeCooldown: 14, perk: 'Company card · +60 energy' },
 ];
 
 export const ACHIEVEMENTS = {
