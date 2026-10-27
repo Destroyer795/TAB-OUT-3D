@@ -25,8 +25,8 @@ export class BossCharacter {
         // World scale: real desk = 0.74m, scene deskTopY = 0.85m
         const S = 0.85 / 0.74;
         this.human = createBoss({
-            height: 1.9 * S,
-            walkSpeedScale: 1.0,
+            height: 2.0 * S,
+            walkSpeedScale: 1.05,
         });
 
         // The root group is placed on the floor (Y = 0) and faces +Z
@@ -46,15 +46,15 @@ export class BossCharacter {
         this.group.position.set(this._startX, this._posY, this._posZ);
 
         // Cinematic lighting attached to boss root
-        this.frontLight = new THREE.PointLight(0xffedd5, 2.5, 6.0);
+        this.frontLight = new THREE.PointLight(0xffedd5, 1.8, 6.0);
         this.frontLight.position.set(0, 1.8, 1.2);
         this.group.add(this.frontLight);
 
-        this.rimLight = new THREE.PointLight(0x38bdf8, 1.2, 5.0);
+        this.rimLight = new THREE.PointLight(0x38bdf8, 1.0, 5.0);
         this.rimLight.position.set(0, 2.0, -1.2);
         this.group.add(this.rimLight);
 
-        this.fillLight = new THREE.PointLight(0x818cf8, 0.4, 4.0);
+        this.fillLight = new THREE.PointLight(0x818cf8, 0.35, 4.0);
         this.fillLight.position.set(0, 0.5, 1.0);
         this.group.add(this.fillLight);
     }

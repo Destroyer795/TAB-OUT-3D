@@ -47,6 +47,7 @@ export class OfficeScene {
         const floor = new THREE.Mesh(geo, mat);
         floor.rotation.x = -Math.PI / 2;
         floor.position.set(0, 0, -5.0);
+        floor.receiveShadow = true;
         this.group.add(floor);
 
         // Carpet pattern (subtle grid lines)
@@ -138,6 +139,8 @@ export class OfficeScene {
             deskMat
         );
         top.position.set(0, 0.82, -0.6);
+        top.castShadow = true;
+        top.receiveShadow = true;
         this.group.add(top);
 
         // Legs
@@ -253,6 +256,8 @@ export class OfficeScene {
             seatMat
         );
         seat.position.set(0, 0.5, 0.4);
+        seat.castShadow = true;
+        seat.receiveShadow = true;
         this.group.add(seat);
 
         // Back rest
@@ -262,14 +267,16 @@ export class OfficeScene {
         );
         back.position.set(0, 0.85, 0.64);
         back.rotation.x = 0.08;
+        back.castShadow = true;
         this.group.add(back);
 
-        // Center post
+        // Center post (smooth 24-seg cylinder)
         const post = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8),
+            new THREE.CylinderGeometry(0.03, 0.03, 0.3, 24),
             frameMat
         );
         post.position.set(0, 0.32, 0.4);
+        post.castShadow = true;
         this.group.add(post);
 
         // Star base
@@ -320,6 +327,8 @@ export class OfficeScene {
             wallMat
         );
         leftWall.position.set(-1.8, 0.6, -1.0);
+        leftWall.castShadow = true;
+        leftWall.receiveShadow = true;
         this.group.add(leftWall);
 
         // Left wall top trim
@@ -336,6 +345,8 @@ export class OfficeScene {
             wallMat
         );
         rightWall.position.set(1.8, 0.6, -1.0);
+        rightWall.castShadow = true;
+        rightWall.receiveShadow = true;
         this.group.add(rightWall);
 
         const rightTrim = new THREE.Mesh(
@@ -345,21 +356,25 @@ export class OfficeScene {
         rightTrim.position.set(1.8, 1.2, -1.0);
         this.group.add(rightTrim);
 
-        // Back wall (with gap for hallway view)
+        // Back wall (with panoramic opening for hallway and meeting view)
         // Left section
         const backLeft = new THREE.Mesh(
             new THREE.BoxGeometry(1.2, 1.2, 0.06),
             wallMat
         );
         backLeft.position.set(-1.2, 0.6, -2.5);
+        backLeft.castShadow = true;
+        backLeft.receiveShadow = true;
         this.group.add(backLeft);
 
         // Right section
         const backRight = new THREE.Mesh(
-            new THREE.BoxGeometry(1.2, 1.2, 0.06),
+            new THREE.BoxGeometry(0.9, 1.2, 0.06),
             wallMat
         );
-        backRight.position.set(1.2, 0.6, -2.5);
+        backRight.position.set(1.35, 0.6, -2.5);
+        backRight.castShadow = true;
+        backRight.receiveShadow = true;
         this.group.add(backRight);
     }
 
@@ -462,58 +477,30 @@ export class OfficeScene {
         this.group.add(borderS);
 
         // ── Background Office Workstations (Cubicle Farm) ────
-        // Row 1 (just behind the walkway, z = -7.5)
-        this._createBackgroundCubicle(-3.2, -7.5, 0);
-        this._createEmployee(-3.2, 0.29, -7.15, Math.PI, {
-            shirtColor: 0x93c5fd, // Light blue shirt
-            pantsColor: 0x1e293b,
-            hairColor: 0x111827, // Black hair
-            skinColor: 0xfdba74,
+        // Row 1 (directly across the walkway aisle, z = -5.8)
+        this._createBackgroundCubicle(-3.2, -5.8, 0);
+        this._createEmployee(-3.2, 0, -5.45, Math.PI, {
             type: "sitting_desk"
         });
 
-        this._createBackgroundCubicle(0.0, -7.5, 0); // Directly visible in the central opening
-        this._createEmployee(0.0, 0.29, -7.15, Math.PI, {
-            shirtColor: 0xffffff, // White shirt
-            pantsColor: 0x334155,
-            hairColor: 0x7c2d12, // Brown hair
-            skinColor: 0xfcd34d,
+        this._createBackgroundCubicle(0.0, -5.8, 0); // Directly visible in the central opening!
+        this._createEmployee(0.0, 0, -5.45, Math.PI, {
             type: "sitting_desk"
         });
 
-        this._createBackgroundCubicle(3.2, -7.5, 0);
-
-        // Row 2 (z = -12.0)
-        this._createBackgroundCubicle(-4.8, -12.0, 0);
-        this._createBackgroundCubicle(-1.6, -12.0, 0);
-        this._createEmployee(-1.6, 0.29, -11.65, Math.PI, {
-            shirtColor: 0xfca5a5, // Light pink shirt
-            pantsColor: 0x0f172a,
-            hairColor: 0xd97706, // Blonde hair
-            skinColor: 0xfca5a5,
+        this._createBackgroundCubicle(3.2, -5.8, 0);
+        this._createEmployee(3.2, 0, -5.45, Math.PI, {
             type: "sitting_desk"
         });
 
-        this._createBackgroundCubicle(1.6, -12.0, 0);
-        this._createEmployee(1.6, 0.29, -11.65, Math.PI, {
-            shirtColor: 0xdbe1e8, // Light gray shirt
-            pantsColor: 0x334155,
-            hairColor: 0x111827, // Black hair
-            skinColor: 0xfdba74,
+        // Row 2 (z = -9.2)
+        this._createBackgroundCubicle(-1.6, -9.2, 0);
+        this._createEmployee(-1.6, 0, -8.85, Math.PI, {
             type: "sitting_desk"
         });
 
-        this._createBackgroundCubicle(4.8, -12.0, 0);
-
-        // Row 3 (z = -16.5)
-        this._createBackgroundCubicle(-3.2, -16.5, 0);
-        this._createBackgroundCubicle(0.0, -16.5, 0);
-        this._createBackgroundCubicle(3.2, -16.5, 0);
-        this._createEmployee(3.2, 0.29, -16.15, Math.PI, {
-            shirtColor: 0x93c5fd, // Light blue shirt
-            pantsColor: 0x1e293b,
-            hairColor: 0x7c2d12, // Brown hair
-            skinColor: 0xfcd34d,
+        this._createBackgroundCubicle(1.6, -9.2, 0);
+        this._createEmployee(1.6, 0, -8.85, Math.PI, {
             type: "sitting_desk"
         });
 
@@ -545,12 +532,12 @@ export class OfficeScene {
         line2.rotation.z = 0.08;
         this.group.add(line2);
 
-        // Water cooler moved to the left aisle
-        this._createWaterCooler(-8.0, 0, -4.5);
+        // Water cooler positioned on the left aisle in clear view
+        this._createWaterCooler(-3.8, 0, -4.2);
 
-        // Potted plants in empty spots (moved outwards to keep the aisles clear)
-        this._createPlant(-8.2, 0, -10.0);
-        this._createPlant(8.2, 0, -10.0);
+        // Potted plants in empty spots
+        this._createPlant(-6.5, 0, -8.0);
+        this._createPlant(6.5, 0, -8.0);
 
         // Meeting Hub area on the right wall (Agile Scrum Board & Collaborative Furniture)
         this._createMeetingHub();
@@ -743,91 +730,95 @@ export class OfficeScene {
             this.group.add(scribble);
         }
 
-        // ── 2. Collaborative High-Top Table ───────────────────
-        const tableX = 8.5;
+        // ── 2. Collaborative High-Top Table (placed in clear view of player) ──
+        const tableX = 4.2;
         const tableY = 0.95;
-        const tableZ = -7.0;
+        const tableZ = -5.0;
 
-        const woodMat = new THREE.MeshStandardMaterial({ color: 0xddc4b0, roughness: 0.4 }); // Light birch wood table top
-        const legMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.8 }); // Steel legs
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0xddc4b0, roughness: 0.4 });
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.8 });
 
         // Table Top
-        const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 2.6), woodMat);
+        const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 2.4), woodMat);
         tableTop.position.set(tableX, tableY, tableZ);
+        tableTop.castShadow = true;
+        tableTop.receiveShadow = true;
         this.group.add(tableTop);
 
         // Legs (4 steel columns)
         const legD = 0.08;
         const legOffsets = [
-            [-0.5, -1.1],
-            [-0.5, 1.1],
-            [0.5, -1.1],
-            [0.5, 1.1]
+            [-0.45, -1.0],
+            [-0.45, 1.0],
+            [0.45, -1.0],
+            [0.45, 1.0]
         ];
         legOffsets.forEach(([ox, oz]) => {
             const leg = new THREE.Mesh(new THREE.BoxGeometry(legD, tableY, legD), legMat);
             leg.position.set(tableX + ox, tableY / 2, tableZ + oz);
+            leg.castShadow = true;
             this.group.add(leg);
         });
 
         // ── 3. High-top Stools (Meeting Chairs) ────────────────
-        const stoolSeatMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 }); // Slate seat pad
-        const stoolLegMat = new THREE.MeshStandardMaterial({ color: 0xdbe1e8, roughness: 0.3, metalness: 0.8 }); // Metal legs
+        const stoolSeatMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+        const stoolLegMat = new THREE.MeshStandardMaterial({ color: 0xdbe1e8, roughness: 0.3, metalness: 0.8 });
 
         const stoolPositions = [
-            [tableX - 0.9, tableZ - 0.6],
-            [tableX - 0.9, tableZ + 0.6],
-            [tableX + 0.9, tableZ - 0.6],
-            [tableX + 0.9, tableZ + 0.6]
+            [tableX - 0.75, tableZ - 0.45],
+            [tableX - 0.75, tableZ + 0.45],
+            [tableX + 0.75, tableZ - 0.45],
+            [tableX + 0.75, tableZ + 0.45]
         ];
 
         stoolPositions.forEach(([sx, sz], index) => {
             // Seat
-            const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 12), stoolSeatMat);
+            const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.05, 24), stoolSeatMat);
             seat.position.set(sx, 0.65, sz);
+            seat.castShadow = true;
+            seat.receiveShadow = true;
             this.group.add(seat);
 
-            // Stool post/base
-            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 8), stoolLegMat);
+            // Stool post/base (smooth 24-seg cylinder)
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 24), stoolLegMat);
             post.position.set(sx, 0.3, sz);
+            post.castShadow = true;
             this.group.add(post);
 
             // Ring footrest
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 6, 16), stoolLegMat);
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.015, 8, 20), stoolLegMat);
             ring.rotation.x = Math.PI / 2;
             ring.position.set(sx, 0.2, sz);
+            ring.castShadow = true;
             this.group.add(ring);
 
-            // Place sitting employees on 3 out of 4 stools
+            // Place sitting employees on 3 stools having an active conversation
             if (index === 0) {
-                // Stool at sx = tableX - 0.9, sz = tableZ - 0.6 (facing table center: +X)
-                this._createEmployee(sx, 0.47, sz, Math.PI / 2, {
-                    shirtColor: 0x93c5fd, // Light blue shirt
-                    pantsColor: 0x1e293b,
-                    hairColor: 0x7c2d12,
-                    skinColor: 0xfdba74,
+                // Facing table center (+X)
+                this._createEmployee(sx, 0, sz, Math.PI / 2, {
                     type: "sitting_stool"
                 });
             } else if (index === 2) {
-                // Stool at sx = tableX + 0.9, sz = tableZ - 0.6 (facing table center: -X)
-                this._createEmployee(sx, 0.47, sz, -Math.PI / 2, {
-                    shirtColor: 0xfca5a5, // Light pink shirt
-                    pantsColor: 0x0f172a,
-                    hairColor: 0x111827,
-                    skinColor: 0xfcd34d,
+                // Facing table center (-X)
+                this._createEmployee(sx, 0, sz, -Math.PI / 2, {
                     type: "sitting_stool"
                 });
             } else if (index === 3) {
-                // Stool at sx = tableX + 0.9, sz = tableZ + 0.6 (facing table center: -X)
-                this._createEmployee(sx, 0.47, sz, -Math.PI / 2, {
-                    shirtColor: 0xdbe1e8, // Light gray shirt
-                    pantsColor: 0x334155,
-                    hairColor: 0xd97706,
-                    skinColor: 0xfca5a5,
+                // Facing table center (-X)
+                this._createEmployee(sx, 0, sz, -Math.PI / 2, {
                     type: "sitting_stool"
                 });
             }
         });
+
+        // Link conversation eye-contact between the stool coworkers
+        const stoolEmps = this.employees.filter(e => e.type === "sitting_stool");
+        if (stoolEmps.length >= 2) {
+            stoolEmps[0].human.lookAt(stoolEmps[1].group.position);
+            for (let i = 1; i < stoolEmps.length; i++) {
+                stoolEmps[i].human.lookAt(stoolEmps[0].group.position);
+            }
+        }
     }
 
     /* ── Small Office Props ────────────────────────────── */
@@ -1313,6 +1304,8 @@ export class OfficeScene {
         const deskMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }); // Pure white desk top
         const desk = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.2), deskMat);
         desk.position.set(0, 0.82, 0);
+        desk.castShadow = true;
+        desk.receiveShadow = true;
         cubicleGroup.add(desk);
 
         // Desk legs (simplified, lighter metal)
@@ -1327,6 +1320,7 @@ export class OfficeScene {
         for (const pos of legPositions) {
             const leg = new THREE.Mesh(legGeo, legMat);
             leg.position.set(pos[0], pos[1], pos[2]);
+            leg.castShadow = true;
             cubicleGroup.add(leg);
         }
 
@@ -1337,6 +1331,8 @@ export class OfficeScene {
         // Back wall
         const backWall = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 0.04), wallMat);
         backWall.position.set(0, 0.6, -0.6);
+        backWall.castShadow = true;
+        backWall.receiveShadow = true;
         cubicleGroup.add(backWall);
 
         const backTrim = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.03, 0.06), frameMat);
@@ -1346,6 +1342,8 @@ export class OfficeScene {
         // Left wall
         const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.2, 1.2), wallMat);
         leftWall.position.set(-1.2, 0.6, 0);
+        leftWall.castShadow = true;
+        leftWall.receiveShadow = true;
         cubicleGroup.add(leftWall);
 
         const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 1.2), frameMat);
@@ -1355,6 +1353,8 @@ export class OfficeScene {
         // Right wall
         const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.2, 1.2), wallMat);
         rightWall.position.set(1.2, 0.6, 0);
+        rightWall.castShadow = true;
+        rightWall.receiveShadow = true;
         cubicleGroup.add(rightWall);
 
         const rightTrim = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 1.2), frameMat);
@@ -1371,6 +1371,7 @@ export class OfficeScene {
         // Monitor body (larger and more detailed)
         const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.04), monMat);
         monitor.position.set(0, 1.05, -0.3);
+        monitor.castShadow = true;
         cubicleGroup.add(monitor);
 
         // Monitor screen face (facing towards the desk/chair, so towards +Z)
@@ -1391,15 +1392,19 @@ export class OfficeScene {
         // Chair (properly sized)
         const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
         chairSeat.position.set(0, 0.45, 0.35);
+        chairSeat.castShadow = true;
+        chairSeat.receiveShadow = true;
         cubicleGroup.add(chairSeat);
 
         const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.6, 0.04), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7 }));
         chairBack.position.set(0, 0.75, 0.58);
         chairBack.rotation.x = 0.08;
+        chairBack.castShadow = true;
         cubicleGroup.add(chairBack);
 
-        const chairPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25, 6), new THREE.MeshStandardMaterial({ color: 0x8fa0b5, metalness: 0.6 }));
+        const chairPost = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25, 24), new THREE.MeshStandardMaterial({ color: 0x8fa0b5, metalness: 0.6 }));
         chairPost.position.set(0, 0.3, 0.35);
+        chairPost.castShadow = true;
         cubicleGroup.add(chairPost);
 
         this.group.add(cubicleGroup);
@@ -1439,10 +1444,10 @@ export class OfficeScene {
         const empIndex = this.employees.length;
         const isDesk = (config.type === "sitting_desk");
 
-        const height = (1.64 + 0.04 * (empIndex % 5)) * S;
-        const seatHeight = isDesk ? 0.55 : 0.75;
+        const height = (1.75 + 0.04 * (empIndex % 5)) * S;
+        const seatHeight = isDesk ? 0.52 : 0.68;
         // palm centre of keyboard, METRES, relative to root (floor under chair facing +Z)
-        const keyboard = [0, 0.85, 0.38];
+        const keyboard = [0, 0.74, 0.35];
 
         const human = createEmployee(empIndex, {
             height,
@@ -1475,24 +1480,21 @@ export class OfficeScene {
             homeZ: z,
             homeRotationY: rotationY,
             monitorTarget,
-            walkCooldown: 5.0 + Math.random() * 15.0,
+            walkCooldown: 4.0 + Math.random() * 8.0,
             walkSpeed: 1.4 + Math.random() * 0.4,
             path: [],
             pathIndex: 0,
             standTimer: 0,
+            idleTimer: 3.0 + Math.random() * 5.0,
         });
     }
 
     _generateWalkPath(emp, dest) {
         const path = [];
         path.push({ x: emp.homeX, z: emp.homeZ });
-        let rowAisleZ = -4.5;
-        if (emp.homeZ < -14.0) rowAisleZ = -14.25;
-        else if (emp.homeZ < -9.0) rowAisleZ = -9.75;
-        path.push({ x: emp.homeX, z: rowAisleZ });
-        const corridorX = dest.x < 0 ? -7.0 : 7.0;
-        path.push({ x: corridorX, z: rowAisleZ });
-        path.push({ x: corridorX, z: dest.z });
+        const aisleZ = -4.5;
+        path.push({ x: emp.homeX, z: aisleZ });
+        path.push({ x: dest.x, z: aisleZ });
         path.push({ x: dest.x, z: dest.z });
         return path;
     }
@@ -1514,17 +1516,32 @@ export class OfficeScene {
                             emp.human.lookAt(emp.monitorTarget);
                         }
 
+                        // Living office idle: occasional pause to stretch or glance around
+                        emp.idleTimer -= dt;
+                        if (emp.idleTimer <= 0) {
+                            emp.idleTimer = 6.0 + Math.random() * 8.0;
+                            if (Math.random() < 0.35) {
+                                emp.human.setPose('sitIdle');
+                                setTimeout(() => {
+                                    if (emp.state === 'sitting' && emp.human.poseName === 'sitIdle') {
+                                        emp.human.setPose('sitType');
+                                        emp.human.lookAt(emp.monitorTarget);
+                                    }
+                                }, 2500 + Math.random() * 2000);
+                            }
+                        }
+
                         emp.walkCooldown -= dt;
                         if (emp.walkCooldown <= 0) {
                             emp.state = "walking";
-                            const dest = Math.random() < 0.5
-                                ? { x: -8.0, z: -4.5 }
-                                : { x: 8.5, z: -7.0 };
+                            const dest = Math.random() < 0.6
+                                ? { x: -3.8, z: -4.2 }
+                                : { x: 3.5, z: -4.8 };
                             emp.path = this._generateWalkPath(emp, dest);
                             emp.pathIndex = 1;
                             emp.human.setPose('stand');
                             emp.human.lookAt(null);
-                            emp.walkCooldown = 35.0 + Math.random() * 25.0;
+                            emp.walkCooldown = 12.0 + Math.random() * 15.0;
                         }
                     }
                 } else if (emp.state === "walking" || emp.state === "returning") {
@@ -1603,13 +1620,14 @@ export class OfficeScene {
                         }
                     }
 
-                    if (dist < 0.15) {
+                    if (dist < 0.20) {
                         emp.pathIndex++;
                         if (emp.pathIndex >= emp.path.length) {
                             if (emp.state === "walking") {
                                 emp.state = "standing";
-                                emp.standTimer = 3.0 + Math.random() * 3.0;
-                                emp.human.setPose('stand');
+                                emp.standTimer = 3.5 + Math.random() * 3.5;
+                                emp.human.setPose('standTalk');
+                                emp.human.setTalking(true);
                             } else {
                                 emp.state = "sitting";
                                 emp.group.position.set(emp.homeX, 0, emp.homeZ);
@@ -1656,6 +1674,7 @@ export class OfficeScene {
                         emp.path = [...emp.path].reverse();
                         emp.pathIndex = 1;
                         emp.human.setPose('stand');
+                        emp.human.setTalking(false);
                     }
                 }
             } else if (emp.type === "sitting_stool") {
@@ -1665,7 +1684,6 @@ export class OfficeScene {
                 } else if (emp.human.poseName === 'panic') {
                     emp.human.setPose('sitTalk');
                     emp.human.setTalking(true);
-                    emp.human.lookAt(null);
                 }
             }
 

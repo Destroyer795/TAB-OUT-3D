@@ -39,11 +39,13 @@ const CAM_HIDING   = { x: 0, y: 1.4, z: 1.4, lookY: 1.05 };
 export class Game {
     constructor() {
         /* ── Three.js core ────────────────────────────── */
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.1;
+        this.renderer.toneMappingExposure = 1.05;
         document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
         this.scene  = new THREE.Scene();

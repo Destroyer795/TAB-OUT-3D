@@ -18,20 +18,42 @@ export class LightingSystem {
     }
 
     _build() {
-        // Ambient - pure white and brighter
-        this.ambient = new THREE.AmbientLight(0xffffff, 1.0);
+        // Ambient - balanced so shadows and contrast show beautifully
+        this.ambient = new THREE.AmbientLight(0xf8fafc, 0.52);
         this.scene.add(this.ambient);
         this.lights.push(this.ambient);
 
-        // Main overhead fluorescent (cool white) - extremely bright
-        this.overhead = new THREE.DirectionalLight(0xffffff, 1.3);
-        this.overhead.position.set(0, 6, 0);
+        // Hemisphere light: soft cool light from ceiling, subtle warm bounce from floor
+        this.hemi = new THREE.HemisphereLight(0xffffff, 0xd1d5db, 0.40);
+        this.scene.add(this.hemi);
+        this.lights.push(this.hemi);
+
+        // Main shadow-casting key light
+        this.keyLight = new THREE.DirectionalLight(0xfff7ed, 1.15);
+        this.keyLight.position.set(4, 7.5, 2);
+        this.keyLight.castShadow = true;
+        this.keyLight.shadow.mapSize.width = 2048;
+        this.keyLight.shadow.mapSize.height = 2048;
+        this.keyLight.shadow.camera.near = 0.5;
+        this.keyLight.shadow.camera.far = 30;
+        this.keyLight.shadow.camera.left = -14;
+        this.keyLight.shadow.camera.right = 14;
+        this.keyLight.shadow.camera.top = 10;
+        this.keyLight.shadow.camera.bottom = -12;
+        this.keyLight.shadow.bias = -0.0004;
+        this.keyLight.shadow.normalBias = 0.02;
+        this.scene.add(this.keyLight);
+        this.lights.push(this.keyLight);
+
+        // Overhead aisle light
+        this.overhead = new THREE.DirectionalLight(0xffffff, 0.6);
+        this.overhead.position.set(0, 6, -4.5);
         this.overhead.castShadow = false;
         this.scene.add(this.overhead);
         this.lights.push(this.overhead);
 
-        // Fill from left (warm-ish) - brightened
-        const fill = new THREE.PointLight(0xfff8f0, 0.6, 20);
+        // Fill from left
+        const fill = new THREE.PointLight(0xfff8f0, 0.5, 20);
         fill.position.set(-3, 4, 1);
         this.scene.add(fill);
         this.lights.push(fill);
@@ -42,8 +64,8 @@ export class LightingSystem {
         this.scene.add(this.monitorGlow);
         this.lights.push(this.monitorGlow);
 
-        // Hallway light (over the hallway walk path) - brightened
-        this.hallwayLight = new THREE.PointLight(0xffffff, 1.0, 15);
+        // Hallway light over boss walk path
+        this.hallwayLight = new THREE.PointLight(0xffffff, 0.8, 15);
         this.hallwayLight.position.set(0, 4, -4.0);
         this.scene.add(this.hallwayLight);
         this.lights.push(this.hallwayLight);
