@@ -26,6 +26,9 @@ class _AudioManager {
         this._musicSpeed = 1.0;
         this._volume = 0.4;
         this._musicVolume = 0.28;
+        this._timeouts = new Set();
+        this._stealth = false;
+        this._ambienceTimer = 0;
     }
 
     /* ── Lifecycle ────────────────────────────────────── */
@@ -60,14 +63,16 @@ class _AudioManager {
             this._musicFilter.connect(this._masterGain);
 
             this._initialized = true;
+            this._startOfficeHum();
         } catch (e) {
-            console.warn('Web Audio initialization error:', e);
+            // Unsupported audio must never prevent a silent game session.
+            this._initialized = false;
         }
     }
 
     resume() {
         if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume();
+            this.ctx.resume().catch(() => {});
         }
     }
 
@@ -113,6 +118,7 @@ class _AudioManager {
         osc.connect(g).connect(targetBus);
         osc.start(t);
         osc.stop(t + duration);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); };
     }
 
     _noise(duration, gainVal = 0.08, dest = null) {
@@ -133,12 +139,13 @@ class _AudioManager {
         g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
         src.connect(g).connect(targetBus);
         src.start(t);
+        src.onended = () => { src.disconnect(); g.disconnect(); };
     }
 
     /* ── Procedural Synthwave BGM ──────────────────────── */
 
     startBgm(mode = 'arcade') {
-        if (!this._initialized) this.init();
+        if (!this._initialized) return;
         if (this._currentBgm === mode && this._musicTimer) return;
         this.stopBgm();
         this._currentBgm = mode;
@@ -175,6 +182,7 @@ class _AudioManager {
      * muffled headphones leaking sound into the cubicle.
      */
     setStealthMuffled(isMuffled) {
+        this._stealth = isMuffled;
         if (!this._musicFilter || !this.ctx) return;
         const t = this.ctx.currentTime;
         this._musicFilter.frequency.cancelScheduledValues(t);
@@ -193,7 +201,7 @@ class _AudioManager {
         const step = this._musicStep % 16;
         this._musicStep++;
 
-        if (mode === 'arcade') {
+        if (mode === 'arcade' && !this._stealth) {
             // ── Bassline (driving Cyberpunk 16th note synth) ─────
             // Pattern in A minor: A1, A1, C2, A1, D2, A1, F2, E2...
             const bassNotes = [
@@ -253,7 +261,7 @@ class _AudioManager {
                 osc.start(t);
                 osc.stop(t + 0.13);
             }
-        } else if (mode === 'menu') {
+        } else if (mode === 'menu' || this._stealth) {
             // Ambient soft Rhodes-style chords on every 8 steps
             if (step % 8 === 0) {
                 const chords = [
@@ -302,6 +310,12 @@ class _AudioManager {
 
         // Shoe scuff noise
         this._noise(0.06, 0.09, out);
+        // Distance attenuation follows the boss as he crosses the aisle.
+        const proximity = 1 / (1 + Math.abs(bossX) * .25);
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(.24 * proximity, t);
+        g.gain.exponentialRampToValueAtTime(.001, t + .14);
+        osc.onended = () => { osc.disconnect(); g.disconnect(); panner?.disconnect(); };
     }
 
     /* ── Enhanced SFX Palette ──────────────────────────── */
@@ -357,7 +371,7 @@ class _AudioManager {
         osc.stop(t + 0.36);
 
         // Satisfied sparkle chime
-        setTimeout(() => {
+        this._later(() => {
             this._osc('sine', 880, 0.15, 0.06);
             this._osc('sine', 1320, 0.25, 0.08);
         }, 320);
@@ -399,12 +413,63 @@ class _AudioManager {
         if (!this._initialized || !this.ctx) return;
         // Exhale / whoosh of relief + celebratory stinger
         this._noise(0.35, 0.1);
+        const t = this.ctx.currentTime;
+        this._musicGain.gain.cancelScheduledValues(t);
+        this._musicGain.gain.setValueAtTime(.015, t);
+        this._musicGain.gain.linearRampToValueAtTime(this._musicVolume, t + 1.1);
+        this.playSuspicionHeartbeat();
         const freqs = [523.25, 659.25, 783.99, 1046.50];
         freqs.forEach((f, i) => {
-            setTimeout(() => {
+            this._later(() => {
                 this._osc('triangle', f, 0.15, 0.08);
             }, i * 60);
         });
+    }
+
+    _later(callback, delay) {
+        const id = setTimeout(() => { this._timeouts.delete(id); callback(); }, delay);
+        this._timeouts.add(id);
+        return id;
+    }
+
+    _startOfficeHum() {
+        const ctx = this.ctx;
+        const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        let brown = 0;
+        for (let i = 0; i < data.length; i++) {
+            brown = (brown + (Math.random() * 2 - 1) * .02) / 1.02;
+            data[i] = brown * 3.5;
+        }
+        this._hum = ctx.createBufferSource();
+        this._hum.buffer = buffer; this._hum.loop = true;
+        this._humFilter = ctx.createBiquadFilter();
+        this._humFilter.type = 'lowpass'; this._humFilter.frequency.value = 360;
+        this._humGain = ctx.createGain(); this._humGain.gain.value = .16;
+        this._hum.connect(this._humFilter).connect(this._humGain).connect(this._masterGain);
+        this._hum.start();
+    }
+
+    updateAmbience(dt) {
+        if (!this._initialized) return;
+        this._ambienceTimer -= dt;
+        if (this._ambienceTimer <= 0) {
+            this._ambienceTimer = .25 + Math.random() * .7;
+            this._noise(.018, .009);
+        }
+    }
+
+    dispose() {
+        this.stopBgm();
+        this._timeouts.forEach(id => clearTimeout(id));
+        this._timeouts.clear();
+        this._hum?.stop();
+        this._hum?.disconnect();
+        this._humFilter?.disconnect();
+        this._humGain?.disconnect();
+        this.ctx?.close().catch(() => {});
+        this.ctx = null;
+        this._initialized = false;
     }
 
     playScoreTick() {
@@ -477,7 +542,7 @@ class _AudioManager {
         if (!this._initialized || !this.ctx) return;
         const freqs = [440, 554.37, 659.25, 880];
         freqs.forEach((f, i) => {
-            setTimeout(() => this._osc('sine', f, 0.18, 0.08), i * 50);
+            this._later(() => this._osc('sine', f, 0.18, 0.08), i * 50);
         });
     }
 
@@ -515,7 +580,7 @@ class _AudioManager {
         if (!this._initialized || !this.ctx) return;
         const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
         notes.forEach((f, i) => {
-            setTimeout(() => {
+            this._later(() => {
                 this._osc('triangle', f, 0.2, 0.09);
                 this._osc('sine', f * 2, 0.2, 0.05);
             }, i * 70);
@@ -526,7 +591,7 @@ class _AudioManager {
         if (!this._initialized || !this.ctx) return;
         const notes = [587.33, 739.99, 880.00, 1174.66];
         notes.forEach((f, i) => {
-            setTimeout(() => this._osc('sine', f, 0.25, 0.08), i * 80);
+            this._later(() => this._osc('sine', f, 0.25, 0.08), i * 80);
         });
     }
 }
