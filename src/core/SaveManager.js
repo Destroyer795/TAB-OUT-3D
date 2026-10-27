@@ -29,7 +29,7 @@ class _SaveManager {
         }
 
         // Fire and forget updating the score
-        AuthSystem.updateScore(value);
+        void AuthSystem.updateScore(value).catch(() => {});
     }
 
     /**
@@ -38,20 +38,22 @@ class _SaveManager {
      * @returns {Promise<boolean>} Whether a new high score was set.
      */
     async submitScore(score) {
+        if (!Number.isFinite(score) || score < 0) return false;
+        score = Math.floor(score);
         let isNewBest = false;
         
         // 1. Update user profile score in database
-        const user = await AuthSystem.getCurrentUser();
-        if (user) {
-            isNewBest = await AuthSystem.updateScore(score);
-        }
-
         // 2. Also update global device high score
         if (score > this._data.highScore) {
             this._data.highScore = score;
             this._persist();
             isNewBest = true;
         }
+
+        // Persist on-device first, then make a best-effort account sync.
+        try {
+            if (AuthSystem.getCachedUser()) isNewBest = (await AuthSystem.updateScore(score)) || isNewBest;
+        } catch { /* The local record is already safe. */ }
 
         return isNewBest;
     }

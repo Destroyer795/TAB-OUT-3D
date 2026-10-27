@@ -20,6 +20,7 @@ class _InputManager {
         this._boundKeyDown  = this._onKeyDown.bind(this);
         this._boundKeyUp    = this._onKeyUp.bind(this);
         this._boundMouseMove = this._onMouseMove.bind(this);
+        this._boundBlur = () => this.reset();
 
         this._installed = false;
     }
@@ -31,6 +32,7 @@ class _InputManager {
         window.addEventListener('keydown', this._boundKeyDown);
         window.addEventListener('keyup',   this._boundKeyUp);
         window.addEventListener('mousemove', this._boundMouseMove);
+        window.addEventListener('blur', this._boundBlur);
         this._installed = true;
     }
 
@@ -38,12 +40,20 @@ class _InputManager {
         window.removeEventListener('keydown', this._boundKeyDown);
         window.removeEventListener('keyup',   this._boundKeyUp);
         window.removeEventListener('mousemove', this._boundMouseMove);
+        window.removeEventListener('blur', this._boundBlur);
+        this.reset();
         this._installed = false;
     }
 
     /** Call once at end of every game-loop tick. */
     endFrame() {
         this._justPressed  = {};
+        this._justReleased = {};
+    }
+
+    reset() {
+        this._held = {};
+        this._justPressed = {};
         this._justReleased = {};
     }
 
@@ -56,6 +66,7 @@ class _InputManager {
     /* ── Internal handlers ────────────────────────────── */
 
     _onKeyDown(e) {
+        if (e.target?.matches?.('input, textarea, select, [contenteditable="true"]')) return;
         if (!this._held[e.code]) {
             this._justPressed[e.code] = true;
         }

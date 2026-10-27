@@ -4,14 +4,24 @@
  */
 
 import { CONFIG } from './Config.js';
-import { createClient } from '@supabase/supabase-js';
 
 const isSupabaseConfigured = CONFIG.supabaseUrl && 
                              CONFIG.supabaseUrl !== 'YOUR_SUPABASE_URL' && 
                              CONFIG.supabaseAnonKey && 
                              CONFIG.supabaseAnonKey !== 'YOUR_SUPABASE_ANON_KEY';
 
-const supabase = isSupabaseConfigured ? createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey) : null;
+let supabase = null;
+if (isSupabaseConfigured) {
+    try {
+        const { createClient } = await import('@supabase/supabase-js');
+        supabase = createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey, {
+            global: { fetch: (url, options = {}) => fetch(url, { ...options, signal: options.signal || AbortSignal.timeout(4500) }) },
+        });
+    } catch { /* Guest play remains available even if the SDK CDN is offline. */ }
+}
+
+const read = key => { try { return localStorage.getItem(key); } catch { return null; } };
+const write = (key, value) => { try { localStorage.setItem(key, value); } catch {} };
 
 // LocalStorage Keys (for Fallback Mode)
 const USERS_KEY = 'tabout3d_users';
@@ -248,19 +258,19 @@ class _AuthSystem {
      * @returns {Promise<{success: boolean}>}
      */
     async playAsGuest() {
-        let guestName = localStorage.getItem('tabout3d_guest_name');
+        let guestName = read('tabout3d_guest_name');
         if (!guestName) {
             guestName = 'Agent_' + Math.floor(1000 + Math.random() * 9000);
-            localStorage.setItem('tabout3d_guest_name', guestName);
+            write('tabout3d_guest_name', guestName);
         }
-        const pb = parseInt(localStorage.getItem('tabout3d_guest_pb') || '0', 10);
+        const pb = Number(read('tabout3d_guest_pb')) || 0;
         this._currentUser = {
             username: guestName,
             email: 'guest@office.local',
             personalBest: pb,
             isGuest: true
         };
-        localStorage.setItem(SESSION_KEY, JSON.stringify(this._currentUser));
+        write(SESSION_KEY, JSON.stringify(this._currentUser));
         return { success: true };
     }
 
@@ -274,7 +284,7 @@ class _AuthSystem {
                 await supabase.auth.signOut();
             } catch {}
         }
-        localStorage.removeItem(SESSION_KEY);
+        try { localStorage.removeItem(SESSION_KEY); } catch {}
         this._currentUser = null;
     }
 
@@ -283,6 +293,7 @@ class _AuthSystem {
      * @returns {Promise<object|null>}
      */
     async getCurrentUser() {
+        if (this._currentUser?.isGuest) return this._currentUser;
         // Check for local guest session first
         try {
             const localSession = localStorage.getItem(SESSION_KEY);
@@ -357,9 +368,8 @@ class _AuthSystem {
                     return this._currentUser;
                 }
                 return null;
-            } catch (err) {
-                console.error("Error in getCurrentUser:", err);
-                return null;
+            } catch {
+                return this._currentUser;
             }
         } else {
             return this._currentUser;
@@ -388,6 +398,21 @@ class _AuthSystem {
      * @returns {Promise<boolean>} Whether a new personal best was set.
      */
     async updateScore(score) {
+        if (!Number.isFinite(score) || score < 0) return false;
+        score = Math.floor(score);
+        const user = this._currentUser;
+        const isNew = !!user && score > (user.personalBest || 0);
+        if (isNew) {
+            user.personalBest = score;
+            if (user.isGuest) write('tabout3d_guest_pb', String(score));
+            write(SESSION_KEY, JSON.stringify(user));
+            write('tabout3d_offline_record', JSON.stringify({ username: user.username, personalBest: score }));
+        }
+        try { return (await this._syncScore(score)) || isNew; }
+        catch { return isNew; }
+    }
+
+    async _syncScore(score) {
         if (this._currentUser && this._currentUser.isGuest) {
             const currentPb = this._currentUser.personalBest || 0;
             if (score > currentPb) {
@@ -445,8 +470,7 @@ class _AuthSystem {
                     }
                 }
                 return false;
-            } catch (err) {
-                console.error("Error updating score in Supabase:", err);
+            } catch {
                 return false;
             }
         } else {
@@ -484,13 +508,20 @@ class _AuthSystem {
                         personalBest: p.personal_best || 0
                     }));
                 }
-            } catch (err) {
-                console.warn("Supabase leaderboard unavailable, falling back to local leaderboard.");
-            }
+            } catch { /* Display local records below. */ }
         }
         
         // LocalStorage Fallback
-        return [...this._users]
+        let offline = null;
+        try { offline = JSON.parse(read('tabout3d_offline_record')); } catch {}
+        const records = new Map(this._users.map(user => [user.username, { username: user.username, personalBest: user.personalBest || 0 }]));
+        for (const user of [offline, this._currentUser]) {
+            if (user?.username && Number.isFinite(user.personalBest)) {
+                const old = records.get(user.username);
+                if (!old || user.personalBest > old.personalBest) records.set(user.username, { username: user.username, personalBest: user.personalBest });
+            }
+        }
+        return [...records.values()]
             .sort((a, b) => b.personalBest - a.personalBest)
             .slice(0, 5)
             .map(u => ({ username: u.username, personalBest: u.personalBest }));
@@ -520,6 +551,8 @@ class _AuthSystem {
             const rawSession = localStorage.getItem(SESSION_KEY);
             if (!rawSession) return null;
             const username = JSON.parse(rawSession).username;
+            const session = JSON.parse(rawSession);
+            if (session.isGuest) return session;
             return this._users.find(u => u.username === username) || null;
         } catch {
             return null;

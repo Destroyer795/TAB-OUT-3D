@@ -17,6 +17,8 @@ import { OfficeScene }   from '../scene/OfficeScene.js';
 import { Monitor }       from '../scene/Monitor.js';
 import { LightingSystem } from '../scene/LightingSystem.js';
 import { BossCharacter }  from '../scene/BossCharacter.js';
+import { Atmosphere } from '../scene/Atmosphere.js';
+import { DeskInteractions } from '../scene/DeskInteractions.js';
 
 import { ArcadeGame }        from '../gameplay/ArcadeGame.js';
 import { SpreadsheetMode }   from '../gameplay/SpreadsheetMode.js';
@@ -34,7 +36,7 @@ import AuthSystem         from './AuthSystem.js';
 
 /* ── Camera defaults ──────────────────────────────────── */
 const CAM_DEFAULT  = { x: 0, y: 2.1, z: 1.8, lookY: 1.45 };
-const CAM_HIDING   = { x: 0, y: 1.4, z: 1.4, lookY: 1.05 };
+const CAM_HIDING   = { x: 0, y: 2.02, z: 1.95, lookY: 1.45 };
 
 export class Game {
     constructor() {
@@ -45,7 +47,8 @@ export class Game {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.05;
+        this.renderer.toneMappingExposure = 1.12;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
         this.scene  = new THREE.Scene();
@@ -56,6 +59,17 @@ export class Game {
         this.camera.position.set(CAM_DEFAULT.x, CAM_DEFAULT.y, CAM_DEFAULT.z);
         this._camTarget = { ...CAM_DEFAULT };
         this._camLookY  = CAM_DEFAULT.lookY;
+        this._cameraPosition = this.camera.position.clone();
+        this._lookTarget = new THREE.Vector3();
+        this._parallax = new THREE.Vector2();
+        this._shake = 0;
+        this._punch = 0;
+        this._time = 0;
+        this._slowMotion = 0;
+        this._closeCallAwarded = false;
+        this._stealthLatched = false;
+        this._disposed = false;
+        this._runId = 0;
 
         /* ── State machine ────────────────────────────── */
         this.fsm = new StateMachine();
@@ -71,6 +85,9 @@ export class Game {
         this.officeScene.setBoss(this.boss);
         this.boss.setOfficeScene(this.officeScene);
         this.boss.setCamera(this.camera);
+        this.atmosphere = new Atmosphere(this.scene);
+        this.desk = new DeskInteractions(this.officeScene, this.camera, this.renderer.domElement,
+            () => this._drinkCoffee(), () => this.fsm.isActive && !this.isPaused);
 
         /* ── Gameplay systems ─────────────────────────── */
         this.arcadeGame   = new ArcadeGame(this.monitor.getCanvas());
@@ -78,6 +95,8 @@ export class Game {
         this.productivity = new ProductivitySystem();
         this.bossSystem   = new BossSystem();
         this.progression  = new ProgressionSystem();
+        this.arcadeGame.render();
+        this.monitor.needsUpdate();
 
         /* ── Dynamic State Vars ───────────────────────── */
         this._showingArcade   = true;
@@ -100,6 +119,15 @@ export class Game {
 
         /* ── Input ────────────────────────────────────── */
         InputManager.install();
+        this._unlockAudio = () => {
+            AudioManager.init();
+            AudioManager.resume();
+            if (this.menu.el.classList.contains('visible')) AudioManager.startBgm('menu');
+            window.removeEventListener('pointerdown', this._unlockAudio);
+            window.removeEventListener('keydown', this._unlockAudio);
+        };
+        window.addEventListener('pointerdown', this._unlockAudio);
+        window.addEventListener('keydown', this._unlockAudio);
 
         /* ── Clock ────────────────────────────────────── */
         this._clock = new THREE.Clock();
@@ -109,7 +137,17 @@ export class Game {
         this._bindEvents();
 
         /* ── Resize ───────────────────────────────────── */
-        window.addEventListener('resize', () => this._onResize());
+        this._resizeHandler = () => this._onResize();
+        this._visibilityHandler = () => {
+            if (document.hidden && this.fsm.isActive && !this.isPaused) this._togglePause();
+        };
+        this._blurHandler = () => {
+            if (this.fsm.isActive && !this.isPaused) this._togglePause();
+        };
+        this._motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+        window.addEventListener('resize', this._resizeHandler);
+        window.addEventListener('blur', this._blurHandler);
+        document.addEventListener('visibilitychange', this._visibilityHandler);
 
         /* ── Start at Auth or Menu ────────────────────── */
         this._initSession();
@@ -128,13 +166,13 @@ export class Game {
 
         EventBus.on('bossWarning', () => {
             if (this.fsm.isActive) {
+                this._closeCallAwarded = false;
                 this.fsm.transition(GameState.BOSS_WARNING);
             }
         });
 
         EventBus.on('bossPresent', () => {
-            if (this.fsm.current === GameState.BOSS_WARNING ||
-                this.fsm.current === GameState.HIDING) {
+            if (this.fsm.isActive) {
                 this.fsm.transition(GameState.BOSS_PRESENT);
             }
         });
@@ -172,9 +210,15 @@ export class Game {
             this.hud.setProductivity(this.productivity.value);
         });
 
-        EventBus.on('spreadsheetWorkDone', ({ boost }) => {
+        EventBus.on('spreadsheetWorkDone', ({ boost, points = 0 }) => {
             this.productivity.value = Math.min(100, this.productivity.value + boost);
+            this.arcadeGame.score += points;
             this.hud.setProductivity(this.productivity.value);
+        });
+
+        EventBus.on('playerPromoted', rank => {
+            this.arcadeGame.score += rank.bonus;
+            this.productivity.value = Math.min(100, this.productivity.value + 15);
         });
 
         EventBus.on('requestCoffee', () => {
@@ -242,6 +286,7 @@ export class Game {
                 this.lighting.stopWarning();
                 this.hud.hideAlert();
                 this.boss.show();
+                this.bossSystem.presenceTime = this.boss.pathLength / 1.35;
                 this.monitor.setLedState('alert');
                 break;
 
@@ -265,6 +310,8 @@ export class Game {
        ══════════════════════════════════════════════════════ */
 
     _startGame() {
+        this._runId++;
+        InputManager.reset();
         AudioManager.init();
         AudioManager.resume();
         AudioManager.startBgm('arcade');
@@ -276,8 +323,14 @@ export class Game {
         this.bossSystem.reset();
         this.progression.resetRun();
         this.tweens.clear();
+        this.desk.reset();
+        this.hud.reset();
 
         this._showingArcade = true;
+        this._stealthLatched = false;
+        this._closeCallAwarded = false;
+        this._slowMotion = 0;
+        this._shake = 0;
         this.suspicion      = 0;
         this.coffeeCooldown = 0;
         this.isPaused       = false;
@@ -286,7 +339,7 @@ export class Game {
         this.hud.setScore(0);
         this.hud.setBest(SaveManager.highScore);
         this.hud.setProductivity(100);
-        this.hud.setRank(this.progression.currentRank.title, this.progression.currentRank.icon);
+        this.hud.setRank(this.progression.currentRank.title, this.progression.currentRank.code);
         this.hud.setMode('arcade');
         this.hud.setCoffeeCooldown(0);
         this.hud.setSuspicion(0);
@@ -296,10 +349,13 @@ export class Game {
         this.lighting.stopWarning();
         this.monitor.setLedState('normal');
 
-        this.fsm.transition(GameState.PLAYING);
+        if (this.fsm.current === GameState.PLAYING) this._onStateChange(null, GameState.PLAYING);
+        else this.fsm.transition(GameState.PLAYING);
+        this.progression.unlock('firstRun');
     }
 
     _goToMenu() {
+        this._runId++;
         this.isPaused = false;
         this.hud.hidePause();
         this.fsm.reset();
@@ -323,11 +379,13 @@ export class Game {
     }
 
     _drinkCoffee() {
-        if (this.coffeeCooldown > 0) return;
-        this.coffeeCooldown = 22.0;
-        this.productivity.value = Math.min(100, this.productivity.value + 35);
+        if (!this.fsm.isActive || this.isPaused || this.coffeeCooldown > 0) return;
+        const perk = this.progression.currentRank;
+        this.coffeeCooldown = perk.coffeeCooldown;
+        this.productivity.value = Math.min(100, this.productivity.value + perk.coffeeBoost);
         this.hud.setProductivity(this.productivity.value);
         AudioManager.playCoffeeGulp();
+        this.desk.drink();
         EventBus.emit('coffeeConsumed');
     }
 
@@ -351,6 +409,8 @@ export class Game {
     }
 
     async _handleGameOver(type) {
+        const runId = this._runId;
+        this._shake = .75;
         AudioManager.playGameOver();
         this.hud.hide();
         if (type !== 'fired') {
@@ -360,11 +420,13 @@ export class Game {
         this.monitor.setLedState('normal');
 
         const score = this.arcadeGame.score;
-        const isNew = await SaveManager.submitScore(score);
-        const best  = SaveManager.highScore;
         const rank  = this.progression.currentRank;
-
-        this.gameOver.show(type, score, best, isNew, rank.title, rank.icon);
+        const previousBest = SaveManager.highScore;
+        // The end screen appears immediately; network sync never blocks a retry.
+        this.gameOver.show(type, score, Math.max(previousBest, score), score > previousBest, rank.title, rank.code);
+        await SaveManager.submitScore(score);
+        if (this._disposed || runId !== this._runId) return;
+        this.hud.setBest(SaveManager.highScore);
     }
 
     /* ══════════════════════════════════════════════════════
@@ -372,7 +434,9 @@ export class Game {
        ══════════════════════════════════════════════════════ */
 
     _showArcade() {
+        if (this._showingArcade) return;
         this._showingArcade = true;
+        this._punch = -.09;
         this.hud.setMode('arcade');
         this.lighting.setMonitorColor(0x00ffaa);
         AudioManager.playShowSwitch();
@@ -380,14 +444,19 @@ export class Game {
     }
 
     _showSpreadsheet() {
+        if (!this._showingArcade) return;
         // Check for Close Call bonus if player dodged boss with high suspicion
-        if (this.suspicion >= 55) {
-            this.arcadeGame.score += 250;
+        const lastMoment = this.bossSystem.phase === 'warning' && this.bossSystem.warningRemaining <= .22;
+        if (!this._closeCallAwarded && (lastMoment || (this.bossSystem.phase === 'present' && this.suspicion >= 60))) {
+            this._closeCallAwarded = true;
+            this.arcadeGame.score += 500;
+            this._slowMotion = .7;
             AudioManager.playCloseCall();
             EventBus.emit('closeCall');
         }
 
         this._showingArcade = false;
+        this._punch = .12;
         this.hud.setMode('stealth');
         this.lighting.setMonitorColor(0xddeeff);
         AudioManager.playHideSwitch();
@@ -403,7 +472,9 @@ export class Game {
 
         this._handleInput(dt);
         if (!this.isPaused) {
-            this._update(dt);
+            const scale = this._slowMotion > 0 ? .4 : 1;
+            this._slowMotion = Math.max(0, this._slowMotion - dt);
+            this._update(dt * scale);
         }
         this._render();
 
@@ -431,22 +502,16 @@ export class Game {
             this._drinkCoffee();
         }
 
-        // SPACE → Hide / Show monitor
-        if (InputManager.isDown('Space')) {
-            if (state === GameState.PLAYING || state === GameState.BOSS_WARNING) {
-                if (state === GameState.BOSS_WARNING) {
-                    this._showSpreadsheet();
-                } else {
-                    this.fsm.transition(GameState.HIDING);
-                }
-            }
-        } else {
-            // Space released
-            if (state === GameState.HIDING) {
-                this.fsm.transition(GameState.PLAYING);
-            } else if (!this._showingArcade && this.fsm.isActive) {
-                this._showArcade();
-            }
+        // Hold Space, or latch stealth with Tab. Alt+Tab is normally owned by
+        // the OS; losing browser focus pauses safely instead of leaving stuck keys.
+        if (InputManager.wasPressed('Tab')) this._stealthLatched = !this._stealthLatched;
+        const hiding = InputManager.isDown('Space') || this._stealthLatched;
+        if (hiding && this._showingArcade) {
+            if (state === GameState.PLAYING) this.fsm.transition(GameState.HIDING);
+            else this._showSpreadsheet();
+        } else if (!hiding && !this._showingArcade) {
+            if (state === GameState.HIDING && this.bossSystem.phase === 'idle') this.fsm.transition(GameState.PLAYING);
+            else this._showArcade();
         }
 
         // Arcade movement (Arrow keys OR A / D keys)
@@ -462,12 +527,8 @@ export class Game {
         // Active Spreadsheet Number-Crunching while hiding
         if (!this._showingArcade) {
             // Any typing keys while hiding
-            const typingKeys = ['KeyA', 'KeyB', 'KeyC', 'KeyD', 'KeyE', 'KeyF', 'KeyG', 'KeyH', 'KeyI',
-                                'KeyJ', 'KeyK', 'KeyL', 'KeyM', 'KeyN', 'KeyO', 'KeyP', 'KeyQ', 'KeyR',
-                                'KeyS', 'KeyT', 'KeyU', 'KeyV', 'KeyW', 'KeyX', 'KeyY', 'KeyZ',
-                                'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Enter'];
-            for (const code of typingKeys) {
-                if (InputManager.wasPressed(code)) {
+            for (const code of Object.keys(InputManager._justPressed)) {
+                if (/^(Key[A-Z]|Digit[0-9]|Enter)$/.test(code) && code !== 'KeyP' && code !== 'KeyC') {
                     this.spreadsheet.crunchNumber();
                     break;
                 }
@@ -480,22 +541,45 @@ export class Game {
     _update(dt) {
         this.tweens.update(dt);
 
-        // Camera interpolation
-        this.camera.position.x = lerp(this.camera.position.x, this._camTarget.x, dt * 4);
-        this.camera.position.y = lerp(this.camera.position.y, this._camTarget.y, dt * 4);
-        this.camera.position.z = lerp(this.camera.position.z, this._camTarget.z, dt * 4);
-        this._camLookY = lerp(this._camLookY, this._camTarget.lookY, dt * 4);
-        this.camera.lookAt(0, this._camLookY, -1);
+        this._time += dt;
+        const motion = !this._motionQuery.matches;
+        const ease = 1 - Math.exp(-6 * dt);
+        this._parallax.x = lerp(this._parallax.x, motion ? InputManager.mouseX * .055 : 0, ease);
+        this._parallax.y = lerp(this._parallax.y, motion ? InputManager.mouseY * .025 : 0, ease);
+        this._cameraPosition.x = lerp(this._cameraPosition.x, this._camTarget.x, ease);
+        this._cameraPosition.y = lerp(this._cameraPosition.y, this._camTarget.y, ease);
+        this._cameraPosition.z = lerp(this._cameraPosition.z, this._camTarget.z, ease);
+        this._punch *= Math.exp(-12 * dt);
+        this._shake = Math.max(0, this._shake - dt * 1.5);
+        const shake = motion ? this._shake * .035 : 0;
+        this.camera.position.copy(this._cameraPosition);
+        this.camera.position.x += this._parallax.x + (Math.random() - .5) * shake;
+        this.camera.position.y += this._parallax.y + (Math.random() - .5) * shake;
+        this.camera.position.z += motion ? this._punch : 0;
+        this._camLookY = lerp(this._camLookY, this._camTarget.lookY, ease);
+        this._lookTarget.set(-this._parallax.x * .4, this._camLookY, -1);
+        this.camera.lookAt(this._lookTarget);
+        const pulse = motion && this.suspicion > 60 ? Math.pow(Math.max(0, Math.sin(this._time * 14)), 6) * 1.2 : 0;
+        const fov = 55 - pulse;
+        if (Math.abs(this.camera.fov - fov) > .001) {
+            this.camera.fov = fov;
+            this.camera.updateProjectionMatrix();
+        }
+        this.atmosphere.update(dt);
+        this.desk.update(dt);
 
         // Lighting & Monitor LED
         this.lighting.update(dt);
         this.monitor.update(dt);
 
         // Office Scene Animation
-        this.officeScene.update(dt);
-        this.boss.update(dt);
-
-        if (!this.fsm.isActive) return;
+        if (!this.fsm.isActive) {
+            this.officeScene.suspicion = this.suspicion;
+            this.officeScene.update(dt);
+            this.boss.update(dt);
+            return;
+        }
+        AudioManager.updateAmbience(dt);
 
         // Coffee Cooldown
         if (this.coffeeCooldown > 0) {
@@ -505,14 +589,15 @@ export class Game {
 
         // ── Boss system ──────────────────────────
         this.bossSystem.update(dt);
+        this.hud.setPatrol(this.bossSystem.phase, this.bossSystem.warningRemaining);
 
         if (this.bossSystem.phase === 'present') {
             this.boss.updateWalk(this.bossSystem.bossProgress, dt, this.fsm.current, this.suspicion);
 
-            if (!this.isBossVisible() && this.bossSystem.bossProgress > 0.5) {
-                this.bossSystem.endPresence();
-            }
         }
+        this.boss.update(dt);
+        this.officeScene.suspicion = this.suspicion;
+        this.officeScene.update(dt);
 
         // ── Dynamic Suspicion Meter ──────────────
         const bossSeesScreen = (this.fsm.current === GameState.BOSS_PRESENT && this._showingArcade && this.isBossVisible());
@@ -552,12 +637,11 @@ export class Game {
         const isRecovering = this._showingArcade;
         this.productivity.update(dt, isDraining, isRecovering);
         this.hud.setProductivity(this.productivity.value);
+        if (!this.fsm.isActive) return;
 
         // ── Arcade game update ───────────────────
         if (this._showingArcade) {
             this.arcadeGame.update(dt);
-            this.hud.setScore(this.arcadeGame.score);
-            this.progression.checkScore(this.arcadeGame.score);
             AudioManager.setMusicSpeed(this.arcadeGame.speed / 270);
         } else {
             this.spreadsheet.update(dt);
@@ -565,6 +649,9 @@ export class Game {
                 AudioManager.playTyping();
             }
         }
+        this.hud.setScore(this.arcadeGame.score);
+        this.progression.checkScore(this.arcadeGame.score);
+        this.hud.setCareer(this.arcadeGame.score, this.progression.currentRankIndex, this.spreadsheet.revenue);
 
         // ── Monitor canvas render ────────────────
         if (this._showingArcade) {
@@ -608,7 +695,21 @@ export class Game {
     /* ── Cleanup ──────────────────────────────────────── */
 
     dispose() {
+        if (this._disposed) return;
+        this._disposed = true;
+        this._runId++;
         this.renderer.setAnimationLoop(null);
+        window.removeEventListener('resize', this._resizeHandler);
+        window.removeEventListener('pointerdown', this._unlockAudio);
+        window.removeEventListener('keydown', this._unlockAudio);
+        window.removeEventListener('blur', this._blurHandler);
+        document.removeEventListener('visibilitychange', this._visibilityHandler);
+        this.hud.dispose();
+        this.menu.hide();
+        AudioManager.dispose();
+        this.tweens.clear();
+        this.desk.dispose();
+        this.atmosphere.dispose();
         InputManager.uninstall();
         EventBus.clear();
         this.officeScene.dispose();
@@ -616,5 +717,6 @@ export class Game {
         this.lighting.dispose();
         this.boss.dispose();
         this.renderer.dispose();
+        this.renderer.domElement.remove();
     }
 }

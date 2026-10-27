@@ -36,6 +36,7 @@ const TRANSITIONS = {
     [GameState.HIDING]: [
         GameState.PLAYING,
         GameState.BOSS_WARNING,
+        GameState.BOSS_PRESENT,
         GameState.GAMEOVER_PRODUCTIVITY,
         GameState.MENU,
     ],
