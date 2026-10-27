@@ -3,6 +3,10 @@
  */
 
 import * as THREE from 'three';
+import { createEmployee } from './HumanoidRig.js';
+
+// World scale: scene deskTopY = 0.85m / real 0.74m
+const S = 0.85 / 0.74;
 
 export class OfficeScene {
     /**
@@ -1432,808 +1436,51 @@ export class OfficeScene {
     }
 
     _createEmployee(x, y, z, rotationY, config) {
-        const group = new THREE.Group();
-        group.position.set(x, y, z);
-        group.rotation.y = rotationY;
-        group.scale.set(2.0, 2.0, 2.0); // Scale up employees to be taller
+        const empIndex = this.employees.length;
+        const isDesk = (config.type === "sitting_desk");
 
-        const empIndex = config.styleIndex !== undefined ? config.styleIndex : this.employees.length;
+        const height = (1.64 + 0.04 * (empIndex % 5)) * S;
+        const seatHeight = isDesk ? 0.55 : 0.75;
+        // palm centre of keyboard, METRES, relative to root (floor under chair facing +Z)
+        const keyboard = [0, 0.85, 0.38];
 
-        // ── High-Fidelity Materials ────────────────────────────
-        const skinMat = new THREE.MeshStandardMaterial({ 
-            color: config.skinColor || 0xfdba74, 
-            roughness: 0.62,
-            metalness: 0.02
-        });
-        const shirtMat = new THREE.MeshStandardMaterial({ 
-            color: config.shirtColor || 0xffffff, 
-            roughness: 0.72 
-        });
-        const pantsMat = new THREE.MeshStandardMaterial({ 
-            color: config.pantsColor || 0x1e293b, 
-            roughness: 0.82 
-        });
-        const hairMat = new THREE.MeshStandardMaterial({ 
-            color: config.hairColor || 0x111827, 
-            roughness: 0.88 
-        });
-        const beltMat = new THREE.MeshStandardMaterial({ 
-            color: 0x1c1917, 
-            roughness: 0.45 
-        });
-        const metalMat = new THREE.MeshStandardMaterial({ 
-            color: 0xd4d4d8, 
-            roughness: 0.2, 
-            metalness: 0.85 
-        });
-        const shoeLeatherMat = new THREE.MeshStandardMaterial({ 
-            color: 0x221c17, 
-            roughness: 0.38, 
-            metalness: 0.05 
-        });
-        const shoeSoleMat = new THREE.MeshStandardMaterial({ 
-            color: 0x18181b, 
-            roughness: 0.85 
-        });
-        const sneakerWhiteMat = new THREE.MeshStandardMaterial({ 
-            color: 0xf1f5f9, 
-            roughness: 0.4 
-        });
-        const eyeWhiteMat = new THREE.MeshStandardMaterial({ 
-            color: 0xf8fafc, 
-            roughness: 0.15 
-        });
-        const pupilMat = new THREE.MeshStandardMaterial({ 
-            color: 0x0a0a0a, 
-            roughness: 0.1 
-        });
-        const mouthMat = new THREE.MeshStandardMaterial({ 
-            color: 0xb55a4e, 
-            roughness: 0.7 
-        });
-        const glassesFrameMat = new THREE.MeshStandardMaterial({ 
-            color: 0x1e293b, 
-            roughness: 0.25, 
-            metalness: 0.8 
-        });
-        const glassesLensMat = new THREE.MeshStandardMaterial({ 
-            color: 0x38bdf8, 
-            transparent: true, 
-            opacity: 0.32, 
-            roughness: 0.05, 
-            metalness: 0.2 
-        });
-        const headphoneMat = new THREE.MeshStandardMaterial({ 
-            color: 0x18181b, 
-            roughness: 0.35, 
-            metalness: 0.6 
-        });
-        const headphoneCushionMat = new THREE.MeshStandardMaterial({ 
-            color: 0x3f3f46, 
-            roughness: 0.8 
+        const human = createEmployee(empIndex, {
+            height,
+            seatHeight,
+            keyboard,
         });
 
-        // ── Torso: Organic Contoured Chest, Waist, Collar & Lanyard ────
-        const torso = new THREE.Group();
-        torso.position.set(0, 0.38, 0);
-        group.add(torso);
+        // Floor point = 0, facing = rotationY
+        human.root.position.set(x, 0, z);
+        human.root.rotation.y = rotationY;
+        this.group.add(human.root);
 
-        // Upper chest / ribcage
-        const chestGeo = new THREE.CylinderGeometry(0.15, 0.135, 0.26, 16);
-        chestGeo.scale(1.0, 1.0, 0.68);
-        const chest = new THREE.Mesh(chestGeo, shirtMat);
-        chest.position.set(0, 0.10, 0);
-        torso.add(chest);
+        // World position of the desktop monitor in this cubicle
+        const monitorTarget = isDesk ? new THREE.Vector3(x, 1.05, z - 0.65) : null;
 
-        // Lower waist
-        const waistGeo = new THREE.CylinderGeometry(0.135, 0.13, 0.22, 16);
-        waistGeo.scale(1.0, 1.0, 0.65);
-        const waist = new THREE.Mesh(waistGeo, shirtMat);
-        waist.position.set(0, -0.10, 0);
-        torso.add(waist);
-
-        // Button placket seam down front
-        const placket = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.42, 0.012), shirtMat);
-        placket.position.set(0, 0.01, 0.088);
-        torso.add(placket);
-
-        // Subtle front buttons
-        for (let b = 0; b < 3; b++) {
-            const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.004, 8), metalMat);
-            btn.rotation.x = Math.PI / 2;
-            btn.position.set(0, 0.14 - b * 0.08, 0.096);
-            torso.add(btn);
-        }
-
-        // Crisp folded collar points framing neckline
-        const collarL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.026, 0.016), shirtMat);
-        collarL.position.set(-0.038, 0.23, 0.078);
-        collarL.rotation.z = -0.32;
-        collarL.rotation.y = 0.22;
-        torso.add(collarL);
-
-        const collarR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.026, 0.016), shirtMat);
-        collarR.position.set(0.038, 0.23, 0.078);
-        collarR.rotation.z = 0.32;
-        collarR.rotation.y = -0.22;
-        torso.add(collarR);
-
-        // Leather belt with metallic buckle at waist hem
-        const beltGeo = new THREE.CylinderGeometry(0.136, 0.134, 0.032, 16);
-        beltGeo.scale(1.0, 1.0, 0.66);
-        const belt = new THREE.Mesh(beltGeo, beltMat);
-        belt.position.set(0, -0.20, 0);
-        torso.add(belt);
-
-        const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.036, 0.012), metalMat);
-        buckle.position.set(0, -0.20, 0.092);
-        torso.add(buckle);
-
-        // Hanging Company ID Lanyard
-        const lanyardMat = new THREE.MeshStandardMaterial({ 
-            color: [0x06b6d4, 0x6366f1, 0x10b981, 0xf59e0b][empIndex % 4], 
-            roughness: 0.6 
-        });
-        const strapL = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.26, 0.006), lanyardMat);
-        strapL.position.set(-0.04, 0.10, 0.092);
-        strapL.rotation.z = -0.25;
-        torso.add(strapL);
-
-        const strapR = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.26, 0.006), lanyardMat);
-        strapR.position.set(0.04, 0.10, 0.092);
-        strapR.rotation.z = 0.25;
-        torso.add(strapR);
-
-        const badgeClip = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.015, 0.01), metalMat);
-        badgeClip.position.set(0, -0.01, 0.096);
-        torso.add(badgeClip);
-
-        const badgeCard = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.082, 0.006), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 }));
-        badgeCard.position.set(0, -0.055, 0.098);
-        torso.add(badgeCard);
-
-        const badgePhoto = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.026, 0.002), new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 }));
-        badgePhoto.position.set(-0.014, -0.046, 0.102);
-        torso.add(badgePhoto);
-
-        // ── Head Group: Anatomical Head, Sculpted Face & Neck ────
-        const head = new THREE.Group();
-        head.position.set(0, 0.70, 0);
-        group.add(head);
-
-        // Anatomical Neck connecting torso to head
-        const neckGeo = new THREE.CylinderGeometry(0.044, 0.052, 0.08, 14);
-        const neck = new THREE.Mesh(neckGeo, skinMat);
-        neck.position.set(0, -0.05, 0);
-        head.add(neck);
-
-        // Sculpted Cranium
-        const craniumGeo = new THREE.SphereGeometry(0.095, 18, 14);
-        craniumGeo.scale(0.96, 1.04, 1.0);
-        const cranium = new THREE.Mesh(craniumGeo, skinMat);
-        cranium.position.set(0, 0.01, -0.005);
-        head.add(cranium);
-
-        // Sculpted Jaw and Chin
-        const jawGeo = new THREE.CylinderGeometry(0.082, 0.058, 0.075, 14);
-        jawGeo.scale(0.92, 1.0, 0.85);
-        const jaw = new THREE.Mesh(jawGeo, skinMat);
-        jaw.position.set(0, -0.045, 0.015);
-        head.add(jaw);
-
-        // Anatomical Ears with Fossa
-        const earGeo = new THREE.SphereGeometry(0.024, 10, 8);
-        earGeo.scale(0.35, 1.0, 0.75);
-        const earL = new THREE.Mesh(earGeo, skinMat);
-        earL.position.set(-0.094, 0.01, -0.005);
-        earL.rotation.y = 0.18;
-        head.add(earL);
-
-        const earR = new THREE.Mesh(earGeo, skinMat);
-        earR.position.set(0.094, 0.01, -0.005);
-        earR.rotation.y = -0.18;
-        head.add(earR);
-
-        // Sculpted Nose with Bridge and Tip
-        const noseBridge = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.038, 0.018), skinMat);
-        noseBridge.position.set(0, 0.005, 0.095);
-        noseBridge.rotation.x = -0.15;
-        head.add(noseBridge);
-
-        const noseTipGeo = new THREE.SphereGeometry(0.012, 10, 8);
-        noseTipGeo.scale(1.1, 0.8, 1.0);
-        const noseTip = new THREE.Mesh(noseTipGeo, skinMat);
-        noseTip.position.set(0, -0.012, 0.104);
-        head.add(noseTip);
-
-        // Natural Arched Eyebrows
-        const browMat = new THREE.MeshStandardMaterial({ color: config.hairColor || 0x111827, roughness: 0.9 });
-        const browL = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.008, 0.012), browMat);
-        browL.position.set(-0.036, 0.044, 0.089);
-        browL.rotation.z = -0.08;
-        head.add(browL);
-
-        const browR = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.008, 0.012), browMat);
-        browR.position.set(0.036, 0.044, 0.089);
-        browR.rotation.z = 0.08;
-        head.add(browR);
-
-        // ── Eyes: Sclera + Rich Iris + Pupil + Specular Reflection Glint ────
-        const irisColors = [0x2563eb, 0x15803d, 0x92400e, 0x0f766e, 0x1e293b];
-        const irisMat = new THREE.MeshStandardMaterial({ 
-            color: irisColors[empIndex % irisColors.length], 
-            roughness: 0.25 
-        });
-
-        const eyeL = new THREE.Group();
-        eyeL.position.set(-0.036, 0.02, 0.086);
-        head.add(eyeL);
-
-        const eyeR = new THREE.Group();
-        eyeR.position.set(0.036, 0.02, 0.086);
-        head.add(eyeR);
-
-        [eyeL, eyeR].forEach(eye => {
-            const scleraGeo = new THREE.SphereGeometry(0.020, 12, 10);
-            scleraGeo.scale(1.15, 0.95, 0.8);
-            const sclera = new THREE.Mesh(scleraGeo, eyeWhiteMat);
-            eye.add(sclera);
-
-            const iris = new THREE.Mesh(new THREE.SphereGeometry(0.011, 10, 8), irisMat);
-            iris.position.set(0, 0, 0.011);
-            iris.scale.set(1.0, 1.0, 0.5);
-            eye.add(iris);
-
-            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 8), pupilMat);
-            pupil.position.set(0, 0, 0.015);
-            eye.add(pupil);
-
-            // Specular reflection glint gives life to the eyes
-            const glint = new THREE.Mesh(new THREE.SphereGeometry(0.0028, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-            glint.position.set(0.003, 0.0035, 0.0165);
-            eye.add(glint);
-        });
-
-        // Sculpted Mouth (scales in update loop)
-        const mouth = new THREE.Group();
-        mouth.position.set(0, -0.044, 0.086);
-        head.add(mouth);
-
-        const upperLip = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.007, 0.009), mouthMat);
-        upperLip.position.set(0, 0.003, 0);
-        mouth.add(upperLip);
-
-        const lowerLip = new THREE.Mesh(new THREE.BoxGeometry(0.030, 0.008, 0.010), mouthMat);
-        lowerLip.position.set(0, -0.004, 0);
-        mouth.add(lowerLip);
-
-        // ── 5 Distinct Volumetric Hairstyles ───────────────────
-        const hair = new THREE.Group();
-        head.add(hair);
-
-        const hairStyle = empIndex % 5;
-        if (hairStyle === 0) {
-            // Style 0: Modern Textured Crop / Taper Fade
-            const topGeo = new THREE.CylinderGeometry(0.092, 0.098, 0.065, 16);
-            topGeo.scale(1.0, 1.0, 1.05);
-            const topHair = new THREE.Mesh(topGeo, hairMat);
-            topHair.position.set(0, 0.09, -0.01);
-            hair.add(topHair);
-
-            const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.045), hairMat);
-            fringe.position.set(0, 0.075, 0.065);
-            fringe.rotation.x = 0.2;
-            hair.add(fringe);
-
-            const backTaper = new THREE.Mesh(new THREE.CylinderGeometry(0.094, 0.075, 0.07, 14), hairMat);
-            backTaper.position.set(0, 0.01, -0.05);
-            hair.add(backTaper);
-        } else if (hairStyle === 1) {
-            // Style 1: Sleek Professional Side-Part Pompadour
-            const crown = new THREE.Mesh(new THREE.SphereGeometry(0.098, 16, 12), hairMat);
-            crown.scale.set(1.0, 0.65, 1.15);
-            crown.position.set(0.01, 0.085, -0.01);
-            hair.add(crown);
-
-            const sweep = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.045, 0.09), hairMat);
-            sweep.position.set(-0.02, 0.09, 0.04);
-            sweep.rotation.z = -0.15;
-            hair.add(sweep);
-
-            const sideburnL = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.05, 0.025), hairMat);
-            sideburnL.position.set(-0.092, 0.02, 0.02);
-            hair.add(sideburnL);
-            const sideburnR = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.05, 0.025), hairMat);
-            sideburnR.position.set(0.092, 0.02, 0.02);
-            hair.add(sideburnR);
-        } else if (hairStyle === 2) {
-            // Style 2: High Professional Bun / Updo
-            const smoothBase = new THREE.Mesh(new THREE.SphereGeometry(0.096, 16, 12), hairMat);
-            smoothBase.position.set(0, 0.03, -0.02);
-            hair.add(smoothBase);
-
-            const bunGeo = new THREE.SphereGeometry(0.052, 14, 12);
-            const bun = new THREE.Mesh(bunGeo, hairMat);
-            bun.position.set(0, 0.125, -0.05);
-            hair.add(bun);
-
-            const tieRing = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.008, 8, 16), metalMat);
-            tieRing.rotation.x = Math.PI / 3;
-            tieRing.position.set(0, 0.105, -0.042);
-            hair.add(tieRing);
-        } else if (hairStyle === 3) {
-            // Style 3: Wavy Layered Shoulder Bob
-            const crownBob = new THREE.Mesh(new THREE.SphereGeometry(0.098, 16, 12), hairMat);
-            crownBob.position.set(0, 0.04, -0.01);
-            hair.add(crownBob);
-
-            const waveL = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.16, 10), hairMat);
-            waveL.position.set(-0.095, -0.03, 0.02);
-            waveL.rotation.z = 0.1;
-            hair.add(waveL);
-
-            const waveR = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.16, 10), hairMat);
-            waveR.position.set(0.095, -0.03, 0.02);
-            waveR.rotation.z = -0.1;
-            hair.add(waveR);
-
-            const backBob = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.06), hairMat);
-            backBob.position.set(0, -0.02, -0.07);
-            hair.add(backBob);
+        if (isDesk) {
+            human.setPose('sitType');
+            human.lookAt(monitorTarget);
         } else {
-            // Style 4: Textured Curls / Afro Taper
-            const afroDome = new THREE.Mesh(new THREE.SphereGeometry(0.108, 16, 14), hairMat);
-            afroDome.scale.set(1.02, 1.05, 1.04);
-            afroDome.position.set(0, 0.05, -0.005);
-            hair.add(afroDome);
-
-            for (let i = 0; i < 4; i++) {
-                const curl = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), hairMat);
-                const ang = (i / 4) * Math.PI * 2;
-                curl.position.set(Math.cos(ang) * 0.075, 0.09 + (i % 2) * 0.02, Math.sin(ang) * 0.075);
-                hair.add(curl);
-            }
+            human.setPose('sitTalk');
+            human.setTalking(true);
         }
 
-        // ── Accessories: Designer Glasses or Over-Ear Headphones ───
-        if (empIndex % 3 === 0) {
-            // Designer titanium eyeglasses
-            const glasses = new THREE.Group();
-            glasses.position.set(0, 0.022, 0.092);
-
-            const rimL = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0024, 8, 16), glassesFrameMat);
-            rimL.position.x = -0.036;
-            glasses.add(rimL);
-
-            const rimR = new THREE.Mesh(new THREE.TorusGeometry(0.019, 0.0024, 8, 16), glassesFrameMat);
-            rimR.position.x = 0.036;
-            glasses.add(rimR);
-
-            const lensL = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.002, 12), glassesLensMat);
-            lensL.rotation.x = Math.PI / 2;
-            lensL.position.x = -0.036;
-            glasses.add(lensL);
-
-            const lensR = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.002, 12), glassesLensMat);
-            lensR.rotation.x = Math.PI / 2;
-            lensR.position.x = 0.036;
-            glasses.add(lensR);
-
-            const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.003, 0.004), glassesFrameMat);
-            bridge.position.set(0, 0.004, 0.004);
-            glasses.add(bridge);
-
-            const templeL = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.002, 0.095), glassesFrameMat);
-            templeL.position.set(-0.055, 0.002, -0.046);
-            glasses.add(templeL);
-
-            const templeR = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.002, 0.095), glassesFrameMat);
-            templeR.position.set(0.055, 0.002, -0.046);
-            glasses.add(templeR);
-
-            head.add(glasses);
-        } else if (empIndex % 3 === 1) {
-            // Over-ear noise-cancelling headphones
-            const headphones = new THREE.Group();
-            const bandGeo = new THREE.TorusGeometry(0.108, 0.008, 8, 20, Math.PI);
-            const band = new THREE.Mesh(bandGeo, headphoneMat);
-            band.rotation.z = Math.PI;
-            band.position.set(0, 0.02, -0.01);
-            headphones.add(band);
-
-            [-0.102, 0.102].forEach(hx => {
-                const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.022, 14), headphoneMat);
-                cup.rotation.z = Math.PI / 2;
-                cup.position.set(hx, 0.01, -0.01);
-                headphones.add(cup);
-
-                const cushion = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.030, 0.010, 14), headphoneCushionMat);
-                cushion.rotation.z = Math.PI / 2;
-                cushion.position.set(hx > 0 ? hx - 0.012 : hx + 0.012, 0.01, -0.01);
-                headphones.add(cushion);
-            });
-
-            head.add(headphones);
-        }
-
-        // ── Leg Hierarchy & Sculpted Footwear ──────────────────
-        const thighGeo = new THREE.CylinderGeometry(0.056, 0.048, 0.30, 14);
-        const calfGeo = new THREE.CylinderGeometry(0.048, 0.040, 0.30, 14);
-        const cuffGeo = new THREE.CylinderGeometry(0.044, 0.045, 0.032, 14);
-
-        // Left Leg
-        const leftThigh = new THREE.Group();
-        leftThigh.position.set(-0.09, 0.16, 0.0);
-        group.add(leftThigh);
-
-        const leftThighMesh = new THREE.Mesh(thighGeo, pantsMat);
-        leftThighMesh.position.set(0, -0.15, 0);
-        leftThigh.add(leftThighMesh);
-
-        const leftCalf = new THREE.Group();
-        leftCalf.position.set(0, -0.32, 0);
-        leftThigh.add(leftCalf);
-
-        const leftCalfMesh = new THREE.Mesh(calfGeo, pantsMat);
-        leftCalfMesh.position.set(0, -0.15, 0);
-        leftCalf.add(leftCalfMesh);
-
-        const leftCuff = new THREE.Mesh(cuffGeo, pantsMat);
-        leftCuff.position.set(0, -0.29, 0);
-        leftCalf.add(leftCuff);
-
-        const leftShoe = new THREE.Group();
-        leftShoe.position.set(0, -0.32, 0.02);
-        leftCalf.add(leftShoe);
-
-        // Right Leg
-        const rightThigh = new THREE.Group();
-        rightThigh.position.set(0.09, 0.16, 0.0);
-        group.add(rightThigh);
-
-        const rightThighMesh = new THREE.Mesh(thighGeo, pantsMat);
-        rightThighMesh.position.set(0, -0.15, 0);
-        rightThigh.add(rightThighMesh);
-
-        const rightCalf = new THREE.Group();
-        rightCalf.position.set(0, -0.32, 0);
-        rightThigh.add(rightCalf);
-
-        const rightCalfMesh = new THREE.Mesh(calfGeo, pantsMat);
-        rightCalfMesh.position.set(0, -0.15, 0);
-        rightCalf.add(rightCalfMesh);
-
-        const rightCuff = new THREE.Mesh(cuffGeo, pantsMat);
-        rightCuff.position.set(0, -0.29, 0);
-        rightCalf.add(rightCuff);
-
-        const rightShoe = new THREE.Group();
-        rightShoe.position.set(0, -0.32, 0.02);
-        rightCalf.add(rightShoe);
-
-        // Footwear (Italian leather oxfords or modern two-tone sneakers)
-        const isSneaker = (empIndex % 2 === 1);
-        const shoeUpperMat = isSneaker ? new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.6 }) : shoeLeatherMat;
-        const soleMat = isSneaker ? sneakerWhiteMat : shoeSoleMat;
-
-        [leftShoe, rightShoe].forEach(shoe => {
-            const sole = new THREE.Mesh(new THREE.BoxGeometry(0.076, 0.024, 0.16), soleMat);
-            sole.position.set(0, -0.028, 0.03);
-            shoe.add(sole);
-
-            const heel = new THREE.Mesh(new THREE.BoxGeometry(0.074, 0.020, 0.06), soleMat);
-            heel.position.set(0, -0.024, -0.03);
-            shoe.add(heel);
-
-            const upperGeo = new THREE.CylinderGeometry(0.038, 0.042, 0.14, 12);
-            upperGeo.scale(0.92, 0.44, 1.0);
-            upperGeo.rotateX(Math.PI / 2);
-            const upper = new THREE.Mesh(upperGeo, shoeUpperMat);
-            upper.position.set(0, 0.005, 0.025);
-            shoe.add(upper);
-
-            const toeGeo = new THREE.SphereGeometry(0.038, 10, 8);
-            toeGeo.scale(0.92, 0.48, 1.15);
-            const toe = new THREE.Mesh(toeGeo, shoeUpperMat);
-            toe.position.set(0, -0.006, 0.075);
-            shoe.add(toe);
-
-            if (isSneaker) {
-                const laces = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.012, 0.055), sneakerWhiteMat);
-                laces.position.set(0, 0.024, 0.03);
-                laces.rotation.x = -0.3;
-                shoe.add(laces);
-            }
+        this.employees.push({
+            human,
+            group: human.root,
+            type: config.type,
+            state: "sitting",
+            homeX: x,
+            homeZ: z,
+            homeRotationY: rotationY,
+            monitorTarget,
+            walkCooldown: 5.0 + Math.random() * 15.0,
+            walkSpeed: 1.4 + Math.random() * 0.4,
+            path: [],
+            pathIndex: 0,
+            standTimer: 0,
         });
-
-        // ── Arm Hierarchy, Smartwatches & Anatomical Hands ─────
-        const shoulderCapGeo = new THREE.SphereGeometry(0.042, 10, 8);
-        const armUpperGeo = new THREE.CylinderGeometry(0.038, 0.033, 0.22, 12);
-        const armForeGeo = new THREE.CylinderGeometry(0.032, 0.027, 0.17, 12);
-        const wristGeo = new THREE.CylinderGeometry(0.022, 0.020, 0.04, 10);
-
-        // Left Arm
-        const leftUpper = new THREE.Group();
-        leftUpper.position.set(-0.18, 0.52, 0.0);
-        group.add(leftUpper);
-
-        const leftShoulderCap = new THREE.Mesh(shoulderCapGeo, shirtMat);
-        leftUpper.add(leftShoulderCap);
-
-        const leftUpperMesh = new THREE.Mesh(armUpperGeo, shirtMat);
-        leftUpperMesh.position.set(0, -0.11, 0);
-        leftUpper.add(leftUpperMesh);
-
-        const leftFore = new THREE.Group();
-        leftFore.position.set(0, -0.24, 0);
-        leftUpper.add(leftFore);
-
-        const leftForeMesh = new THREE.Mesh(armForeGeo, shirtMat);
-        leftForeMesh.position.set(0, -0.085, 0);
-        leftFore.add(leftForeMesh);
-
-        const leftWrist = new THREE.Mesh(wristGeo, skinMat);
-        leftWrist.position.set(0, -0.175, 0);
-        leftFore.add(leftWrist);
-
-        // OLED Smartwatch on left wrist
-        const watchBand = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.022, 10), new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.4 }));
-        watchBand.position.set(0, -0.165, 0);
-        leftFore.add(watchBand);
-
-        const watchScreen = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.018, 0.010), new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.1, emissive: 0x0891b2, emissiveIntensity: 0.35 }));
-        watchScreen.position.set(0, -0.165, 0.024);
-        leftFore.add(watchScreen);
-
-        const leftHand = new THREE.Group();
-        leftHand.position.set(0, -0.20, 0);
-        leftFore.add(leftHand);
-
-        // Right Arm
-        const rightUpper = new THREE.Group();
-        rightUpper.position.set(0.18, 0.52, 0.0);
-        group.add(rightUpper);
-
-        const rightShoulderCap = new THREE.Mesh(shoulderCapGeo, shirtMat);
-        rightUpper.add(rightShoulderCap);
-
-        const rightUpperMesh = new THREE.Mesh(armUpperGeo, shirtMat);
-        rightUpperMesh.position.set(0, -0.11, 0);
-        rightUpper.add(rightUpperMesh);
-
-        const rightFore = new THREE.Group();
-        rightFore.position.set(0, -0.24, 0);
-        rightUpper.add(rightFore);
-
-        const rightForeMesh = new THREE.Mesh(armForeGeo, shirtMat);
-        rightForeMesh.position.set(0, -0.085, 0);
-        rightFore.add(rightForeMesh);
-
-        const rightWrist = new THREE.Mesh(wristGeo, skinMat);
-        rightWrist.position.set(0, -0.175, 0);
-        rightFore.add(rightWrist);
-
-        const rightHand = new THREE.Group();
-        rightHand.position.set(0, -0.20, 0);
-        rightFore.add(rightHand);
-
-        // Anatomical Hands: Palms, Opposable Thumbs & Curved Typing/Resting Fingers
-        [
-            { hand: leftHand, isLeft: true },
-            { hand: rightHand, isLeft: false }
-        ].forEach(({ hand, isLeft }) => {
-            const palm = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.040, 0.038), skinMat);
-            palm.position.set(0, -0.018, 0.005);
-            hand.add(palm);
-
-            const thumbGeo = new THREE.CylinderGeometry(0.008, 0.007, 0.025, 8);
-            const thumb = new THREE.Mesh(thumbGeo, skinMat);
-            thumb.position.set(isLeft ? 0.024 : -0.024, -0.016, 0.018);
-            thumb.rotation.z = isLeft ? -0.45 : 0.45;
-            thumb.rotation.x = -0.3;
-            hand.add(thumb);
-
-            for (let f = 0; f < 4; f++) {
-                const fingerX = (f - 1.5) * 0.010;
-                const fingerLen = (f === 1 || f === 2) ? 0.028 : 0.024;
-                const fingerGeo = new THREE.CylinderGeometry(0.005, 0.004, fingerLen, 6);
-                const finger = new THREE.Mesh(fingerGeo, skinMat);
-                finger.position.set(fingerX, -0.038, 0.014);
-                finger.rotation.x = -0.45; // Curved naturally to type or rest
-                hand.add(finger);
-            }
-        });
-
-        // Push employee object to appropriate container
-        if (config.type === "sitting_desk") {
-            this.employees.push({
-                group: group,
-                head: head,
-                torso: torso,
-                hair: hair,
-                leftThigh: leftThigh,
-                rightThigh: rightThigh,
-                leftCalf: leftCalf,
-                rightCalf: rightCalf,
-                leftShoe: leftShoe,
-                rightShoe: rightShoe,
-                leftUpper: leftUpper,
-                rightUpper: rightUpper,
-                leftFore: leftFore,
-                rightFore: rightFore,
-                leftHand: leftHand,
-                rightHand: rightHand,
-                
-                eyeL: eyeL,
-                eyeR: eyeR,
-                mouth: mouth,
-                isBlinking: false,
-                blinkTimer: 1.0 + Math.random() * 4.0,
-                blinkDuration: 0.0,
-                
-                type: "sitting_desk",
-                state: "sitting",
-                homeX: x,
-                homeY: y,
-                homeZ: z,
-                homeRotationY: rotationY,
-                
-                animOffset: Math.random() * 100,
-                typeTimer: Math.random() * 2,
-                isTyping: Math.random() > 0.5,
-                typeSpeed: 12 + Math.random() * 8,
-                lookTimer: Math.random() * 3,
-                lookTargetY: 0,
-                lookTargetX: 0,
-                lookCurrY: 0,
-                lookCurrX: 0,
-                walkCooldown: 5.0 + Math.random() * 15.0,
-                walkSpeed: 1.4 + Math.random() * 0.4,
-                path: [],
-                pathIndex: 0,
-                standTimer: 0,
-                gesture: "none",
-                gestureTimer: 2.0 + Math.random() * 5.0,
-                targetPose: {
-                    leftThigh:  { rx: -Math.PI / 2 },
-                    rightThigh: { rx: -Math.PI / 2 },
-                    leftCalf:   { rx: Math.PI / 2 },
-                    rightCalf:  { rx: Math.PI / 2 },
-                    leftShoe:   { rx: 0 },
-                    rightShoe:  { rx: 0 },
-                    leftUpper:  { rx: -1.2, rz: 0.1 },
-                    rightUpper: { rx: -1.2, rz: -0.1 },
-                    leftFore:   { rx: -0.4 },
-                    rightFore:  { rx: -0.4 },
-                    leftHand:   { rx: 0.2 },
-                    rightHand:  { rx: 0.2 },
-                    groupY: y
-                }
-            });
-        } else {
-            this.employees.push({
-                group: group,
-                head: head,
-                torso: torso,
-                hair: hair,
-                leftThigh: leftThigh,
-                rightThigh: rightThigh,
-                leftCalf: leftCalf,
-                rightCalf: rightCalf,
-                leftShoe: leftShoe,
-                rightShoe: rightShoe,
-                leftUpper: leftUpper,
-                rightUpper: rightUpper,
-                leftFore: leftFore,
-                rightFore: rightFore,
-                leftHand: leftHand,
-                rightHand: rightHand,
-                
-                eyeL: eyeL,
-                eyeR: eyeR,
-                mouth: mouth,
-                isBlinking: false,
-                blinkTimer: 1.0 + Math.random() * 4.0,
-                blinkDuration: 0.0,
-                
-                type: "sitting_stool",
-                state: "sitting",
-                homeX: x,
-                homeY: y,
-                homeZ: z,
-                homeRotationY: rotationY,
-                
-                animOffset: Math.random() * 100,
-                typeTimer: Math.random() * 2,
-                lookTimer: Math.random() * 3,
-                lookTargetY: 0,
-                lookTargetX: 0,
-                lookCurrY: 0,
-                lookCurrX: 0,
-                gesture: "none",
-                gestureTimer: 2.0 + Math.random() * 5.0,
-                targetPose: {
-                    leftThigh:  { rx: -Math.PI / 2 },
-                    rightThigh: { rx: -Math.PI / 2 },
-                    leftCalf:   { rx: Math.PI / 2 },
-                    rightCalf:  { rx: Math.PI / 2 },
-                    leftShoe:   { rx: 0 },
-                    rightShoe:  { rx: 0 },
-                    leftUpper:  { rx: -0.8, rz: 0.15 },
-                    rightUpper: { rx: -0.8, rz: -0.15 },
-                    leftFore:   { rx: -0.5 },
-                    rightFore:  { rx: -0.5 },
-                    leftHand:   { rx: 0.2 },
-                    rightHand:  { rx: 0.2 },
-                    groupY: y
-                }
-            });
-        }
-
-        this.group.add(group);
-    }
-
-    _toStanding(emp) {
-        emp.targetPose = {
-            leftThigh:  { rx: 0 },
-            rightThigh: { rx: 0 },
-            leftCalf:   { rx: 0 },
-            rightCalf:  { rx: 0 },
-            leftShoe:   { rx: 0 },
-            rightShoe:  { rx: 0 },
-            leftUpper:  { rx: 0, rz: 0.05 },
-            rightUpper: { rx: 0, rz: -0.05 },
-            leftFore:   { rx: 0 },
-            rightFore:  { rx: 0 },
-            leftHand:   { rx: 0 },
-            rightHand:  { rx: 0 },
-            groupY: 1.0
-        };
-    }
-
-    _toSitting(emp) {
-        emp.targetPose = {
-            leftThigh:  { rx: -Math.PI / 2 },
-            rightThigh: { rx: -Math.PI / 2 },
-            leftCalf:   { rx: Math.PI / 2 },
-            rightCalf:  { rx: Math.PI / 2 },
-            leftShoe:   { rx: 0 },
-            rightShoe:  { rx: 0 },
-            leftUpper:  { rx: -1.2, rz: 0.1 },
-            rightUpper: { rx: -1.2, rz: -0.1 },
-            leftFore:   { rx: -0.4 },
-            rightFore:  { rx: -0.4 },
-            leftHand:   { rx: 0.2 },
-            rightHand:  { rx: 0.2 },
-            groupY: emp.homeY
-        };
-    }
-
-    /** Smoothly interpolate all limb positions/rotations toward targetPose */
-    _lerpLimbs(emp, dt) {
-        if (!emp.targetPose) return;
-        const speed = 3.5; // lerp speed — lower = smoother
-        const t = 1 - Math.exp(-speed * dt); // frame-rate independent lerp factor
-
-        const _l = (cur, tgt) => cur + (tgt - cur) * t;
-
-        const limbs = ['leftThigh','rightThigh','leftCalf','rightCalf','leftShoe','rightShoe',
-                        'leftUpper','rightUpper','leftFore','rightFore','leftHand','rightHand'];
-
-        for (const name of limbs) {
-            const mesh = emp[name];
-            const tgt = emp.targetPose[name];
-            if (!mesh || !tgt) continue;
-            if (tgt.rx !== undefined) mesh.rotation.x = _l(mesh.rotation.x, tgt.rx);
-            if (tgt.ry !== undefined) mesh.rotation.y = _l(mesh.rotation.y, tgt.ry);
-            if (tgt.rz !== undefined) mesh.rotation.z = _l(mesh.rotation.z, tgt.rz);
-            if (tgt.px !== undefined) mesh.position.x = _l(mesh.position.x, tgt.px);
-            if (tgt.py !== undefined) mesh.position.y = _l(mesh.position.y, tgt.py);
-            if (tgt.pz !== undefined) mesh.position.z = _l(mesh.position.z, tgt.pz);
-        }
-
-        // Group Y (standing height vs sitting height)
-        emp.group.position.y = _l(emp.group.position.y, emp.targetPose.groupY);
     }
 
     _generateWalkPath(emp, dest) {
@@ -2251,26 +1498,34 @@ export class OfficeScene {
     }
 
     update(dt) {
-        const _lerp = (a, b, t) => a + (b - a) * t;
-        const smoothT = 1 - Math.exp(-3.5 * dt); // frame-rate independent lerp factor
+        const isBossPresent = this.boss && this.boss.group && this.boss.group.visible;
+        const smoothT = 1 - Math.exp(-3.5 * dt);
 
         this.employees.forEach(emp => {
-            // ── 0. Smooth limb interpolation (always runs) ────
-            this._lerpLimbs(emp, dt);
-
-            // ── 1. AI Walking State Machine (desk employees only) ────
+            // ── AI State Machine (walking / pathfinding for desk employees) ──
             if (emp.type === "sitting_desk") {
                 if (emp.state === "sitting") {
-                    emp.walkCooldown -= dt;
-                    if (emp.walkCooldown <= 0) {
-                        emp.state = "walking";
-                        const dest = Math.random() < 0.5
-                            ? { x: -8.0, z: -4.5 }
-                            : { x: 8.5, z: -7.0 };
-                        emp.path = this._generateWalkPath(emp, dest);
-                        emp.pathIndex = 1;
-                        this._toStanding(emp);
-                        emp.walkCooldown = 35.0 + Math.random() * 25.0;
+                    if (isBossPresent) {
+                        emp.human.setPose('panic');
+                        if (this.boss) emp.human.lookAt(this.boss.group.position);
+                    } else {
+                        if (emp.human.poseName === 'panic') {
+                            emp.human.setPose('sitType');
+                            emp.human.lookAt(emp.monitorTarget);
+                        }
+
+                        emp.walkCooldown -= dt;
+                        if (emp.walkCooldown <= 0) {
+                            emp.state = "walking";
+                            const dest = Math.random() < 0.5
+                                ? { x: -8.0, z: -4.5 }
+                                : { x: 8.5, z: -7.0 };
+                            emp.path = this._generateWalkPath(emp, dest);
+                            emp.pathIndex = 1;
+                            emp.human.setPose('stand');
+                            emp.human.lookAt(null);
+                            emp.walkCooldown = 35.0 + Math.random() * 25.0;
+                        }
                     }
                 } else if (emp.state === "walking" || emp.state === "returning") {
                     const target = emp.path[emp.pathIndex];
@@ -2281,7 +1536,7 @@ export class OfficeScene {
                     // 1. Calculate Local Obstacle Avoidance Steering Forces
                     let avoidX = 0;
                     let avoidZ = 0;
-                    const avoidRadius = 1.4; // Detection radius for steering away
+                    const avoidRadius = 1.4;
 
                     // Avoid Boss
                     if (this.boss && this.boss.group.visible) {
@@ -2289,7 +1544,6 @@ export class OfficeScene {
                         const bz = this.boss.group.position.z;
                         const d = Math.hypot(emp.group.position.x - bx, emp.group.position.z - bz);
                         if (d < avoidRadius && d > 0.01) {
-                            // Steer away from boss
                             const pushX = (emp.group.position.x - bx) / d;
                             const pushZ = (emp.group.position.z - bz) / d;
                             const weight = (avoidRadius - d) / avoidRadius;
@@ -2298,7 +1552,7 @@ export class OfficeScene {
                         }
                     }
 
-                    // Avoid other active/moving employees
+                    // Avoid other employees
                     for (const other of this.employees) {
                         if (other === emp) continue;
                         if (other.state !== "sitting" || other.type === "sitting_stool") {
@@ -2306,35 +1560,31 @@ export class OfficeScene {
                             const oz = other.group.position.z;
                             const d = Math.hypot(emp.group.position.x - ox, emp.group.position.z - oz);
                             if (d < avoidRadius && d > 0.01) {
-                                // Steer away
                                 const pushX = (emp.group.position.x - ox) / d;
                                 const pushZ = (emp.group.position.z - oz) / d;
                                 const weight = (avoidRadius - d) / avoidRadius;
                                 avoidX += pushX * weight * 1.0;
                                 avoidZ += pushZ * weight * 1.0;
-                                
-                                // Perpendicular bias to steer to the right of each other (like polite humans)
                                 avoidX += -pushZ * weight * 0.4;
                                 avoidZ += pushX * weight * 0.4;
                             }
                         }
                     }
 
-                    // 2. Backup Hard Collision Blocking (to completely halt if directly behind someone/something)
+                    // 2. Hard collision blocking
                     let blocked = false;
-                    const collisionDist = 1.0; // tighter bound since we steer to avoid
-                    
+                    const collisionDist = 1.0;
+
                     if (this.boss && this.boss.group.visible) {
                         const bx = this.boss.group.position.x;
                         const bz = this.boss.group.position.z;
                         if (Math.hypot(emp.group.position.x - bx, emp.group.position.z - bz) < collisionDist) {
                             const dxBoss = bx - emp.group.position.x;
                             const dzBoss = bz - emp.group.position.z;
-                            // Blocked if boss is directly in our path of travel
                             if ((dx / dist) * dxBoss + (dz / dist) * dzBoss > 0) blocked = true;
                         }
                     }
-                    
+
                     if (!blocked) {
                         for (const other of this.employees) {
                             if (other === emp) continue;
@@ -2344,7 +1594,6 @@ export class OfficeScene {
                                 if (Math.hypot(emp.group.position.x - ox, emp.group.position.z - oz) < collisionDist) {
                                     const dxOther = ox - emp.group.position.x;
                                     const dzOther = oz - emp.group.position.z;
-                                    // Blocked if other employee is directly in front of us
                                     if ((dx / dist) * dxOther + (dz / dist) * dzOther > 0.2) {
                                         blocked = true;
                                         break;
@@ -2360,262 +1609,75 @@ export class OfficeScene {
                             if (emp.state === "walking") {
                                 emp.state = "standing";
                                 emp.standTimer = 3.0 + Math.random() * 3.0;
+                                emp.human.setPose('stand');
                             } else {
                                 emp.state = "sitting";
-                                emp.group.position.set(emp.homeX, emp.homeY, emp.homeZ);
+                                emp.group.position.set(emp.homeX, 0, emp.homeZ);
                                 emp.group.rotation.set(0, emp.homeRotationY, 0);
-                                this._toSitting(emp);
+                                if (isBossPresent) {
+                                    emp.human.setPose('panic');
+                                    if (this.boss) emp.human.lookAt(this.boss.group.position);
+                                } else {
+                                    emp.human.setPose('sitType');
+                                    emp.human.lookAt(emp.monitorTarget);
+                                }
                             }
                         }
                     } else if (!blocked) {
                         const moveDist = emp.walkSpeed * dt;
                         const step = Math.min(moveDist, dist);
-                        
-                        // Normal step velocity vector towards target path node
+
                         let vx = (dx / dist) * step;
                         let vz = (dz / dist) * step;
-                        
-                        // Blend in the steering avoidance offset
+
                         vx += avoidX * dt * 2.0;
                         vz += avoidZ * dt * 2.0;
-                        
-                        // Limit final step speed to employee's walk speed
+
                         const finalSpeed = Math.hypot(vx, vz);
                         if (finalSpeed > moveDist) {
                             vx = (vx / finalSpeed) * moveDist;
                             vz = (vz / finalSpeed) * moveDist;
                         }
-                        
+
+                        // Move root position (HumanoidRig auto-detects movement and animates legs/feet/arms!)
                         emp.group.position.x += vx;
                         emp.group.position.z += vz;
 
-                        // Smooth rotation toward movement direction (smooth steering facing)
+                        // Rotate to face movement direction
                         const targetRotY = Math.atan2(vx, vz);
                         let angleDiff = targetRotY - emp.group.rotation.y;
                         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
                         emp.group.rotation.y += angleDiff * smoothT * 2;
-
-                        // Smooth walking bob
-                        const bob = Math.abs(Math.sin(Date.now() * 0.008)) * 0.03;
-                        emp.targetPose.groupY = 1.0 + bob;
-
-                        // Walking leg & arm swing animation
-                        const walkCycle = Date.now() * 0.006 + emp.animOffset;
-                        const swing = Math.sin(walkCycle) * 0.35;
-
-                        // Legs swing opposite to each other (centered at 0)
-                        emp.targetPose.leftThigh.rx = swing;
-                        emp.targetPose.rightThigh.rx = -swing;
-                        emp.targetPose.leftCalf.rx = 0;
-                        emp.targetPose.rightCalf.rx = 0;
-
-                        // Arms swing opposite to legs
-                        emp.targetPose.leftUpper.rx = -swing * 0.6;
-                        emp.targetPose.rightUpper.rx = swing * 0.6;
-                        emp.targetPose.leftFore.rx = 0;
-                        emp.targetPose.rightFore.rx = 0;
-                    } else {
-                        // Smoothly return legs/arms to neutral standing pose when blocked
-                        emp.targetPose.leftThigh.rx = 0;
-                        emp.targetPose.rightThigh.rx = 0;
-                        emp.targetPose.leftCalf.rx = 0;
-                        emp.targetPose.rightCalf.rx = 0;
-                        emp.targetPose.leftUpper.rx = 0;
-                        emp.targetPose.rightUpper.rx = 0;
-                        emp.targetPose.leftFore.rx = 0;
-                        emp.targetPose.rightFore.rx = 0;
                     }
                 } else if (emp.state === "standing") {
                     emp.standTimer -= dt;
-                    const time = Date.now() * 0.001 + emp.animOffset;
-                    emp.group.rotation.y += Math.sin(time * 0.8) * 0.001;
-
-                    // Reset legs/arms to standing neutral when stopped
-                    emp.targetPose.leftThigh.rx = 0;
-                    emp.targetPose.rightThigh.rx = 0;
-                    emp.targetPose.leftUpper.rx = 0;
-                    emp.targetPose.rightUpper.rx = 0;
-                    emp.targetPose.leftFore.rx = 0;
-                    emp.targetPose.rightFore.rx = 0;
-
                     if (emp.standTimer <= 0) {
                         emp.state = "returning";
                         emp.path = [...emp.path].reverse();
                         emp.pathIndex = 1;
+                        emp.human.setPose('stand');
                     }
                 }
-            }
-
-            // ── 2-5. All idle animations go through targetPose ─────
-            // First, reset targetPose hands/forearms/upper to base values
-            // so that animations can layer on top cleanly each frame
-            if (emp.targetPose && (emp.state === "sitting" || emp.state === "standing")) {
-                const isSitting = emp.state === "sitting";
-                if (isSitting && emp.type === "sitting_desk") {
-                    emp.targetPose.leftUpper.rx = -1.2; emp.targetPose.leftUpper.rz = 0.1;
-                    emp.targetPose.rightUpper.rx = -1.2; emp.targetPose.rightUpper.rz = -0.1;
-                    emp.targetPose.leftFore.rx = -0.4;
-                    emp.targetPose.rightFore.rx = -0.4;
-                    emp.targetPose.leftHand.rx = 0.2;
-                    emp.targetPose.rightHand.rx = 0.2;
-                } else if (isSitting && emp.type === "sitting_stool") {
-                    emp.targetPose.leftUpper.rx = -0.8; emp.targetPose.leftUpper.rz = 0.15;
-                    emp.targetPose.rightUpper.rx = -0.8; emp.targetPose.rightUpper.rz = -0.15;
-                    emp.targetPose.leftFore.rx = -0.5;
-                    emp.targetPose.rightFore.rx = -0.5;
-                    emp.targetPose.leftHand.rx = 0.2;
-                    emp.targetPose.rightHand.rx = 0.2;
-                } else if (emp.state === "standing") {
-                    emp.targetPose.leftUpper.rx = 0; emp.targetPose.leftUpper.rz = 0.05;
-                    emp.targetPose.rightUpper.rx = 0; emp.targetPose.rightUpper.rz = -0.05;
-                    emp.targetPose.leftFore.rx = 0;
-                    emp.targetPose.rightFore.rx = 0;
-                    emp.targetPose.leftHand.rx = 0;
-                    emp.targetPose.rightHand.rx = 0;
-                }
-            }
-
-            // ── Typing (desk employees, sitting) ───
-            if (emp.type === "sitting_desk" && emp.state === "sitting" && emp.targetPose) {
-                emp.typeTimer += dt;
-                if (emp.typeTimer > (emp.isTyping ? 3.0 + Math.random() * 3 : 1.0 + Math.random() * 2)) {
-                    emp.isTyping = !emp.isTyping;
-                    emp.typeTimer = 0;
-                }
-                if (emp.isTyping) {
-                    const time = Date.now() * 0.001 * emp.typeSpeed;
-                    // Tapping is rapid rotation of forearms/hands
-                    emp.targetPose.leftFore.rx = -0.4 + Math.sin(time) * 0.08;
-                    emp.targetPose.rightFore.rx = -0.4 + Math.cos(time + 1.2) * 0.08;
-                    emp.targetPose.leftHand.rx = 0.2 + Math.cos(time) * 0.05;
-                    emp.targetPose.rightHand.rx = 0.2 + Math.sin(time + 1.2) * 0.05;
-                }
-            }
-
-            // ── Stool hand gestures ───
-            if (emp.type === "sitting_stool" && emp.targetPose) {
-                const time = Date.now() * 0.001 + emp.animOffset;
-                const amplitude = Math.max(0, Math.sin(time * 0.5) - 0.2) * 0.15;
-                emp.targetPose.leftFore.rx = -0.5 + Math.sin(time * 3) * amplitude;
-                emp.targetPose.rightFore.rx = -0.5 + Math.cos(time * 2.5) * amplitude;
-            }
-
-            // ── Head looking ─────────────────────
-            if (emp.state === "walking" || emp.state === "returning") {
-                emp.lookTargetY = 0;
-                emp.lookTargetX = 0;
-            } else {
-                emp.lookTimer += dt;
-                if (emp.lookTimer > 2.0 + Math.random() * 3.0) {
-                    emp.lookTargetY = (Math.random() - 0.5) * 0.4;
-                    emp.lookTargetX = (Math.random() - 0.3) * 0.3;
-                    emp.lookTimer = 0;
-                }
-            }
-            emp.lookCurrY = _lerp(emp.lookCurrY, emp.lookTargetY, smoothT);
-            emp.lookCurrX = _lerp(emp.lookCurrX, emp.lookTargetX, smoothT);
-            emp.head.rotation.y = emp.lookCurrY;
-            emp.head.rotation.x = emp.lookCurrX;
-
-            // ── Gestures (only when sitting or standing idle) ───
-            if (emp.state !== "walking" && emp.state !== "returning" && emp.targetPose) {
-                emp.gestureTimer -= dt;
-                if (emp.gestureTimer <= 0) {
-                    if (emp.gesture === "none") {
-                        const r = Math.random();
-                        if (r < 0.35) emp.gesture = "raising_hand";
-                        else if (r < 0.65) emp.gesture = "chatting";
-                        else emp.gesture = "none";
-                        emp.gestureTimer = 2.0 + Math.random() * 3.0;
-                    } else {
-                        emp.gesture = "none";
-                        emp.gestureTimer = 4.0 + Math.random() * 10.0;
-                    }
-                }
-
-                const time = Date.now() * 0.001;
-
-                if (emp.gesture === "raising_hand") {
-                    // Raise upper arm and wave side-to-side
-                    emp.targetPose.leftUpper.rx = -2.2;
-                    emp.targetPose.leftUpper.rz = 0.1 + Math.sin(time * 3.0) * 0.15;
-                    emp.targetPose.leftFore.rx = -0.2;
-                } else if (emp.gesture === "chatting") {
-                    // Conversational forearm wiggles
-                    emp.targetPose.leftFore.rx = -0.6 + Math.sin(time * 2.5) * 0.2;
-                    emp.targetPose.rightFore.rx = -0.6 + Math.cos(time * 2.2) * 0.2;
-                    emp.lookTargetX = Math.sin(time * 2.5) * 0.05;
-                }
-            }
-
-            // ── Face Reactions & Movements ─────────────────────
-            if (emp.eyeL && emp.eyeR && emp.mouth) {
-                // 1. Blinking timer update
-                emp.blinkTimer -= dt;
-                if (emp.blinkTimer <= 0) {
-                    emp.isBlinking = true;
-                    emp.blinkDuration = 0.12; // 120ms blink
-                    emp.blinkTimer = 2.5 + Math.random() * 4.0;
-                }
-                if (emp.isBlinking) {
-                    emp.blinkDuration -= dt;
-                    if (emp.blinkDuration <= 0) {
-                        emp.isBlinking = false;
-                    }
-                }
-
-                // 2. State-based Expression Configurations
-                let targetEyeScaleY = 1.0;
-                let targetMouthScaleX = 1.0;
-                let targetMouthScaleY = 1.0;
-
-                const isBossPresent = this.boss && this.boss.group && this.boss.group.visible;
-
+            } else if (emp.type === "sitting_stool") {
                 if (isBossPresent) {
-                    // Panic/alert expression: wide open eyes, small round mouth
-                    targetEyeScaleY = 1.35;
-                    targetMouthScaleX = 0.55;
-                    targetMouthScaleY = 1.6;
-                } else if (emp.isTyping && emp.state === "sitting") {
-                    // Focused/working hard expression: slightly squinted eyes
-                    targetEyeScaleY = 0.8;
-                    targetMouthScaleX = 1.05;
-                    targetMouthScaleY = 0.85;
-                } else if (emp.gesture === "chatting") {
-                    // Speaking/talking expression: mouth oscillates dynamically
-                    const speakCycle = Date.now() * 0.015;
-                    targetMouthScaleY = 0.6 + Math.abs(Math.sin(speakCycle)) * 2.2;
-                    targetMouthScaleX = 0.8 + Math.cos(speakCycle) * 0.25;
-                } else if (emp.gesture === "raising_hand") {
-                    // Pleased/waving expression: wide smile
-                    targetMouthScaleX = 1.25;
-                    targetMouthScaleY = 0.6;
+                    emp.human.setPose('panic');
+                    if (this.boss) emp.human.lookAt(this.boss.group.position);
+                } else if (emp.human.poseName === 'panic') {
+                    emp.human.setPose('sitTalk');
+                    emp.human.setTalking(true);
+                    emp.human.lookAt(null);
                 }
-
-                // Blink override
-                if (emp.isBlinking) {
-                    targetEyeScaleY = 0.08;
-                }
-
-                // 3. Smooth face lerping for organic animations
-                const faceLerp = 1 - Math.exp(-14 * dt);
-                emp.eyeL.scale.y += (targetEyeScaleY - emp.eyeL.scale.y) * faceLerp;
-                emp.eyeR.scale.y += (targetEyeScaleY - emp.eyeR.scale.y) * faceLerp;
-                
-                emp.mouth.scale.x += (targetMouthScaleX - emp.mouth.scale.x) * faceLerp;
-                emp.mouth.scale.y += (targetMouthScaleY - emp.mouth.scale.y) * faceLerp;
             }
+
+            // Advance procedural animation (breathe, blink, IK, typing, saccades)
+            emp.human.update(dt);
         });
     }
 
     dispose() {
         this.scene.remove(this.group);
-        this.group.traverse(child => {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                else child.material.dispose();
-            }
+        this.employees.forEach(emp => {
+            if (emp.human) emp.human.dispose();
         });
         this.employees = [];
     }

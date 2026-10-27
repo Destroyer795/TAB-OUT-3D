@@ -68,6 +68,7 @@ export class Game {
         this.boss        = new BossCharacter(this.scene);
         this.officeScene.setBoss(this.boss);
         this.boss.setOfficeScene(this.officeScene);
+        this.boss.setCamera(this.camera);
 
         /* ── Gameplay systems ─────────────────────────── */
         this.arcadeGame   = new ArcadeGame(this.monitor.getCanvas());
@@ -243,6 +244,9 @@ export class Game {
                 break;
 
             case GameState.GAMEOVER_FIRED:
+                this.boss.setPose('point');
+                this.boss.setExpression('scowl');
+                this.boss.setTalking(true);
                 this._handleGameOver('fired');
                 break;
             case GameState.GAMEOVER_PRODUCTIVITY:
@@ -347,7 +351,9 @@ export class Game {
     async _handleGameOver(type) {
         AudioManager.playGameOver();
         this.hud.hide();
-        this.boss.hide();
+        if (type !== 'fired') {
+            this.boss.hide();
+        }
         this.lighting.stopWarning();
         this.monitor.setLedState('normal');
 
@@ -485,6 +491,7 @@ export class Game {
 
         // Office Scene Animation
         this.officeScene.update(dt);
+        this.boss.update(dt);
 
         if (!this.fsm.isActive) return;
 
@@ -498,7 +505,7 @@ export class Game {
         this.bossSystem.update(dt);
 
         if (this.bossSystem.phase === 'present') {
-            this.boss.updateWalk(this.bossSystem.bossProgress);
+            this.boss.updateWalk(this.bossSystem.bossProgress, dt, this.fsm.current, this.suspicion);
 
             if (!this.isBossVisible() && this.bossSystem.bossProgress > 0.5) {
                 this.bossSystem.endPresence();
