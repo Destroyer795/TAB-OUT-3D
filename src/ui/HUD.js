@@ -11,6 +11,7 @@
 
 import EventBus from '../core/EventBus.js';
 import AudioManager from '../audio/AudioManager.js';
+import { CAREER_RANKS } from '../gameplay/ProgressionSystem.js';
 
 export class HUD {
     constructor() {
@@ -75,7 +76,7 @@ export class HUD {
             </div>
 
             <!-- Interactive Coffee Widget -->
-            <div class="hud-coffee-widget" id="hud-coffee-btn" title="Click or Press [C] to drink coffee">
+            <button class="hud-coffee-widget" id="hud-coffee-btn" title="Click or Press [C] to drink coffee" aria-label="Drink coffee to recover productivity">
                 <span class="coffee-icon">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="2" x2="6" y2="5"/><line x1="10" y1="2" x2="10" y2="5"/><line x1="14" y1="2" x2="14" y2="5"/></svg>
                 </span>
@@ -83,7 +84,7 @@ export class HUD {
                     <span class="coffee-title">[C] Energy Surge</span>
                     <span class="coffee-status" id="hud-coffee-status">READY</span>
                 </div>
-            </div>
+            </button>
 
             <!-- Boss Warning Banner -->
             <div class="hud-alert" id="hud-alert">
@@ -100,9 +101,22 @@ export class HUD {
             </div>
 
             <!-- Quick Controls Hint Bar -->
+            <div class="hud-shift-strip" aria-live="polite">
+                <span class="shift-indicator"></span><span id="hud-patrol">FLOOR CLEAR · MAKE IT LOOK LIKE WORK</span>
+            </div>
+            <div class="hud-career">
+                <div class="career-label"><span>CAREER TRAJECTORY</span><span id="hud-career-next">JUNIOR ANALYST</span></div>
+                <div class="career-track"><div id="hud-career-fill"></div></div>
+                <span id="hud-career-perk">Coffee privileges</span>
+                <div class="career-revenue">VERIFIED REVENUE <strong id="hud-revenue">$0</strong></div>
+            </div>
+            <div class="close-call-badge" id="close-call-badge" role="status">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>
+                <div>CLOSE CALL!<small>+500 PTS · STILL EMPLOYED</small></div>
+            </div>
             <div class="hud-controls">
                 <span>← → / A D MOVE</span>
-                <span>HOLD SPACE HIDE & CRUNCH</span>
+                <span>HOLD SPACE / TAB HIDE</span>
                 <span>C DRINK COFFEE</span>
                 <span>P PAUSE</span>
             </div>
@@ -142,6 +156,12 @@ export class HUD {
         this._toastDesc = document.getElementById('toast-desc');
 
         this._pauseEl = document.getElementById('hud-pause');
+        this._patrolEl = document.getElementById('hud-patrol');
+        this._careerNext = document.getElementById('hud-career-next');
+        this._careerFill = document.getElementById('hud-career-fill');
+        this._careerPerk = document.getElementById('hud-career-perk');
+        this._revenueEl = document.getElementById('hud-revenue');
+        this._closeBadge = document.getElementById('close-call-badge');
     }
 
     _bindEvents() {
@@ -150,21 +170,49 @@ export class HUD {
         });
 
         EventBus.on('playerPromoted', rank => {
-            this.setRank(rank.title, rank.icon);
-            this.showToast(rank.icon, 'PROMOTION!', `Promoted to ${rank.title}! +${rank.bonus} Pts`);
+            this.setRank(rank.title, rank.code);
+            this.showToast(rank.code, 'PROMOTION!', `${rank.title} · +${rank.bonus} PTS · ${rank.perk}`);
         });
 
         EventBus.on('achievementUnlocked', ach => {
-            this.showToast(ach.icon, 'ACHIEVEMENT UNLOCKED!', `${ach.title}: ${ach.desc}`);
+            this.showToast(ach.code, 'ACHIEVEMENT UNLOCKED!', `${ach.title}: ${ach.desc}`);
         });
 
         EventBus.on('closeCall', () => {
-            this.showToast('EVASION', 'CLOSE CALL!', 'Narrowly escaped boss detection! +250 Pts');
+            this.showToast('EVASION', 'CLOSE CALL!', 'Your browser history lives another day. +500 PTS');
+            this._closeBadge.classList.remove('visible');
+            void this._closeBadge.offsetWidth;
+            this._closeBadge.classList.add('visible');
         });
     }
 
     show() { this.el.classList.add('visible'); }
     hide() { this.el.classList.remove('visible'); }
+
+    reset() {
+        clearTimeout(this._toastTimer);
+        this._toastQueue.length = 0;
+        this._isShowingToast = false;
+        this._toastEl.classList.remove('visible');
+        this._closeBadge.classList.remove('visible');
+        this.hidePause();
+        this.setPatrol('idle', 0);
+        this.setCareer(0, 0, 0);
+    }
+
+    setPatrol(phase, remaining) {
+        this.el.dataset.patrol = phase;
+        this._patrolEl.textContent = phase === 'warning' ? `FOOTSTEPS INCOMING · ${remaining.toFixed(1)}s · HIDE NOW` :
+            phase === 'present' ? 'BOSS ON THE FLOOR · KEEP THAT SPREADSHEET OPEN' : 'FLOOR CLEAR · MAKE IT LOOK LIKE WORK';
+    }
+
+    setCareer(score, rankIndex, revenue) {
+        const current = CAREER_RANKS[rankIndex], next = CAREER_RANKS[rankIndex + 1];
+        this._careerNext.textContent = next ? `${next.title} · ${next.score.toLocaleString()}` : 'CORPORATE ENDGAME';
+        this._careerFill.style.width = `${next ? Math.min(100, (score - current.score) / (next.score - current.score) * 100) : 100}%`;
+        this._careerPerk.textContent = current.perk;
+        this._revenueEl.textContent = `$${revenue.toLocaleString()}`;
+    }
 
     setScore(v) {
         this._scoreEl.textContent = v;
@@ -256,15 +304,15 @@ export class HUD {
         this._isShowingToast = true;
 
         const next = this._toastQueue.shift();
-        this._toastIcon.innerHTML = `<span class="toast-chip">${next.icon}</span>`;
+        this._toastIcon.textContent = next.icon || 'SYS';
         this._toastTitle.textContent = next.title;
         this._toastDesc.textContent = next.desc;
 
         this._toastEl.classList.add('visible');
 
-        setTimeout(() => {
+        this._toastTimer = setTimeout(() => {
             this._toastEl.classList.remove('visible');
-            setTimeout(() => {
+            this._toastTimer = setTimeout(() => {
                 this._isShowingToast = false;
                 this._processToastQueue();
             }, 350);
@@ -295,5 +343,12 @@ export class HUD {
 
     hidePause() {
         this._pauseEl.classList.remove('visible');
+    }
+
+    dispose() {
+        clearTimeout(this._toastTimer);
+        this._toastQueue.length = 0;
+        this.hide();
+        this.el.innerHTML = '';
     }
 }

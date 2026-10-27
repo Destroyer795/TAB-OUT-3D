@@ -4,6 +4,9 @@
 
 import AudioManager from '../audio/AudioManager.js';
 import AuthSystem   from '../core/AuthSystem.js';
+import { CAREER_RANKS } from '../gameplay/ProgressionSystem.js';
+
+const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 export class Menu {
     /**
@@ -50,7 +53,7 @@ export class Menu {
                     </div>
                     <div class="instruction-row">
                         <span class="key">HOLD SPACE</span>
-                        <span>Camouflage & crunch ledger</span>
+                        <span>Hide; Tab toggles hands-free stealth</span>
                     </div>
                     <div class="instruction-row">
                         <span class="key">C KEY</span>
@@ -73,7 +76,8 @@ export class Menu {
                     </div>
                 </div>
 
-                <p class="menu-tip">Piloting through digital firewall corridors. When surveillance approaches, hold SPACE to camouflage as spreadsheet data.</p>
+                <div class="menu-career-ladder">${CAREER_RANKS.map(rank => `<span title="${rank.perk}">${rank.code}<strong>${rank.title}</strong></span>`).join('')}</div>
+                <p class="menu-tip">Dodge corporate firewalls. Hold SPACE when footsteps approach. Type while hidden to earn revenue. Click the mug, lamp, or duck on your desk. Your quarterly review depends on it.</p>
 
                 <button class="menu-btn" id="btn-start" style="width: 100%; max-width: 320px; margin-top: 12px;">
                     <span class="btn-glow"></span>
@@ -119,7 +123,7 @@ export class Menu {
                 return `
                     <div class="leaderboard-row ${highlightClass}">
                         <span class="rank-badge ${rankClass}">${rankNum}</span>
-                        <span class="username">${item.username}</span>
+                        <span class="username">${escapeHTML(item.username)}</span>
                         <span class="score">${item.personalBest} <span class="score-unit">PTS</span></span>
                     </div>
                 `;
@@ -128,12 +132,15 @@ export class Menu {
     }
 
     async show() {
-        await this._refreshDetails();
+        const version = (this._showVersion || 0) + 1;
+        this._showVersion = version;
         this.el.classList.add('visible');
-        AudioManager.startBgm('menu');
+        try { await this._refreshDetails(); } catch {}
+        if (this._showVersion === version) AudioManager.startBgm('menu');
     }
 
     hide() {
+        this._showVersion = (this._showVersion || 0) + 1;
         this.el.classList.remove('visible');
         AudioManager.stopBgm();
         if (this._ambienceInterval) {

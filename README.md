@@ -1,5 +1,11 @@
 # TAB-OUT 3D ⚡
 
+### Character and animation refinement
+
+Characters have revised shoulders and hips, connected elbows and knees, sculpted faces, visible eyes, smooth hairlines, and quieter fabric shading. Seated reactions preserve chair height. Typing hands target the actual keyboard, meeting gestures follow the active speaker, and workers stand, turn, walk, align with their chair, and sit before resuming work. Boss patrols follow curves at walking speed.
+
+Run `npm run dev`, then open `http://localhost:8080`. No build or install is required. `npm run check` checks JavaScript syntax and `npm test` runs the system regression suite. With the server running, `npm run test:browser` and `npm run test:characters` run headless Chrome checks (set `CHROME_PATH` if Chrome is installed elsewhere). Visit `http://localhost:8080/tests/characters.html` for the interactive Character Lab, including walking, typing, meeting, reaction, and face-detail views.
+
 TAB-OUT 3D is a stealth arcade experience set in a simulated 3D corporate office environment. Players control a fast-paced cyberpunk lane runner on their virtual workstation monitor while dodging the eagle eye of the roaming corporate boss.
 
 ---
