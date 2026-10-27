@@ -8,6 +8,7 @@
  */
 
 import * as THREE from 'three';
+import { disposeTree } from '../utils/DisposeUtils.js';
 
 const CANVAS_W = 1024;
 const CANVAS_H = 576;
@@ -29,6 +30,8 @@ export class Monitor {
         this.texture = new THREE.CanvasTexture(this.canvas);
         this.texture.minFilter = THREE.LinearFilter;
         this.texture.magFilter = THREE.LinearFilter;
+        this.texture.colorSpace = THREE.SRGBColorSpace;
+        this.texture.generateMipmaps = false;
 
         // Monitor group
         this.group = new THREE.Group();
@@ -41,8 +44,11 @@ export class Monitor {
 
     _build() {
         // ── Monitor screen ───────────────────────────
-        const screenGeo = new THREE.PlaneGeometry(1.6, 0.9);
-        this._screenMat = new THREE.MeshBasicMaterial({ map: this.texture });
+        const screenGeo = new THREE.PlaneGeometry(1.6, 0.9, 40, 1);
+        const positions = screenGeo.attributes.position;
+        for (let i = 0; i < positions.count; i++) positions.setZ(i, .045 * Math.pow(positions.getX(i) / .8, 2));
+        screenGeo.computeVertexNormals();
+        this._screenMat = new THREE.MeshBasicMaterial({ map: this.texture, toneMapped: false });
         this._screen = new THREE.Mesh(screenGeo, this._screenMat);
         this._screen.position.set(0, 1.6, -1.05);
         this._screen.rotation.x = -0.05;   // slight tilt
@@ -154,13 +160,7 @@ export class Monitor {
     }
 
     dispose() {
-        this.texture.dispose();
-        this._screenMat.dispose();
-        this._ledMat.dispose();
         this.scene.remove(this.group);
-        this.group.traverse(child => {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-        });
+        disposeTree(this.group);
     }
 }

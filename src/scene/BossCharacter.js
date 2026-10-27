@@ -25,8 +25,8 @@ export class BossCharacter {
         // World scale: real desk = 0.74m, scene deskTopY = 0.85m
         const S = 0.85 / 0.74;
         this.human = createBoss({
-            height: 2.0 * S,
-            walkSpeedScale: 1.05,
+            height: 1.88 * S,
+            walkSpeedScale: 1,
         });
 
         // The root group is placed on the floor (Y = 0) and faces +Z
@@ -44,6 +44,17 @@ export class BossCharacter {
         this._posZ = -4.5;
         this._posY = 0;
         this.group.position.set(this._startX, this._posY, this._posZ);
+        this._paths = [
+            [[8, -4.5], [3, -4.5], [-3, -4.5], [-8, -4.5]],
+            [[-8, -4.5], [-3, -4.5], [3, -4.5], [8, -4.5]],
+            [[-7, -17], [-7, -7], [-6, -4.5], [0, -4.5], [8, -4.5]],
+            [[7, -17], [7, -7], [6, -4.5], [0, -4.5], [-8, -4.5]],
+            [[-8, -4.5], [-2, -4.5], [5, -4.5], [7, -7], [7, -17]],
+        ].map(points => new THREE.CatmullRomCurve3(points.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal'));
+        this._pathPosition = new THREE.Vector3();
+        this._pathTangent = new THREE.Vector3();
+        this._pathState = { x: 0, y: 0, z: 0, bodyRotY: 0 };
+        this._avoidance = new THREE.Vector2();
 
         // Cinematic lighting attached to boss root
         this.frontLight = new THREE.PointLight(0xffedd5, 1.8, 6.0);
@@ -70,84 +81,23 @@ export class BossCharacter {
     /* ── Path Coordinates ────────────────────────────────────────── */
 
     _getPathState(pathIndex, progress) {
-        let x = 0, y = 0, z = -4.5;
-        let bodyRotY = 0;
-
-        switch (pathIndex) {
-            case 0: // Right to Left (Main walkway)
-                x = lerp(8, -8, progress);
-                z = -4.5;
-                bodyRotY = -Math.PI / 2;
-                break;
-            case 1: // Left to Right (Main walkway)
-                x = lerp(-8, 8, progress);
-                z = -4.5;
-                bodyRotY = Math.PI / 2;
-                break;
-            case 2: { // Back-Left corridor to Main-Right walkway
-                if (progress < 0.5) {
-                    const t = progress / 0.5;
-                    x = -7.0;
-                    z = lerp(-18.0, -4.5, t);
-                    if (progress > 0.4) {
-                        const turnT = (progress - 0.4) / 0.1;
-                        bodyRotY = lerp(0, Math.PI / 2, turnT);
-                    } else {
-                        bodyRotY = 0;
-                    }
-                } else {
-                    const t = (progress - 0.5) / 0.5;
-                    x = lerp(-7.0, 8.0, t);
-                    z = -4.5;
-                    bodyRotY = Math.PI / 2;
-                }
-                break;
-            }
-            case 3: { // Back-Right corridor to Main-Left walkway
-                if (progress < 0.5) {
-                    const t = progress / 0.5;
-                    x = 7.0;
-                    z = lerp(-18.0, -4.5, t);
-                    if (progress > 0.4) {
-                        const turnT = (progress - 0.4) / 0.1;
-                        bodyRotY = lerp(0, -Math.PI / 2, turnT);
-                    } else {
-                        bodyRotY = 0;
-                    }
-                } else {
-                    const t = (progress - 0.5) / 0.5;
-                    x = lerp(7.0, -8.0, t);
-                    z = -4.5;
-                    bodyRotY = -Math.PI / 2;
-                }
-                break;
-            }
-            case 4: { // Main-Left walkway to Back-Right corridor
-                if (progress < 0.5) {
-                    const t = progress / 0.5;
-                    x = lerp(-8.0, 7.0, t);
-                    z = -4.5;
-                    bodyRotY = Math.PI / 2;
-                    if (progress > 0.4) {
-                        const turnT = (progress - 0.4) / 0.1;
-                        bodyRotY = lerp(Math.PI / 2, Math.PI, turnT);
-                    }
-                } else {
-                    const t = (progress - 0.5) / 0.5;
-                    x = 7.0;
-                    z = lerp(-4.5, -18.0, t);
-                    bodyRotY = Math.PI;
-                }
-                break;
-            }
-        }
-
-        return { x, y, z, bodyRotY };
+        const curve = this._paths[pathIndex];
+        curve.getPointAt(Math.max(0, Math.min(1, progress)), this._pathPosition);
+        curve.getTangentAt(Math.max(0, Math.min(1, progress)), this._pathTangent);
+        this._pathState.x = this._pathPosition.x;
+        this._pathState.z = this._pathPosition.z;
+        this._pathState.bodyRotY = Math.atan2(this._pathTangent.x, this._pathTangent.z);
+        return this._pathState;
     }
+
+    get pathLength() { return this._paths[this._currentPathIndex].getLength(); }
 
     show() {
         this.group.visible = true;
         this._currentPathIndex = Math.floor(Math.random() * 5);
+        this.human.setSpeed(null);
+        this.human._first = true;
+        this._avoidance.set(0, 0);
 
         const state = this._getPathState(this._currentPathIndex, 0);
         this.group.position.set(state.x, 0, state.z);
@@ -227,12 +177,14 @@ export class BossCharacter {
         }
 
         // Move root (HumanoidRig auto-detects movement and animates walk stride/IK feet)
-        this.group.position.set(state.x + avoidX, 0, state.z + avoidZ);
+        this._avoidance.x += (avoidX - this._avoidance.x) * (1 - Math.exp(-4 * dt));
+        this._avoidance.y += (avoidZ - this._avoidance.y) * (1 - Math.exp(-4 * dt));
+        this.group.position.set(state.x + this._avoidance.x, 0, state.z + this._avoidance.y);
 
         // Smooth body rotation toward path heading
         let angleDiff = state.bodyRotY - this.group.rotation.y;
         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        this.group.rotation.y += angleDiff * 0.12;
+        this.group.rotation.y += angleDiff * (1 - Math.exp(-7.7 * dt));
 
         // Map game state to HumanoidRig poses
         if (gameState === 'GAMEOVER_FIRED' || suspicion >= 100) {
@@ -269,6 +221,9 @@ export class BossCharacter {
     }
 
     dispose() {
+        this.frontLight.dispose();
+        this.rimLight.dispose();
+        this.fillLight.dispose();
         this.scene.remove(this.group);
         if (this.human) {
             this.human.dispose();

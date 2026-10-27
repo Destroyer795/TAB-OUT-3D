@@ -36,12 +36,17 @@ export class LightingSystem {
         this.keyLight.shadow.mapSize.height = 2048;
         this.keyLight.shadow.camera.near = 0.5;
         this.keyLight.shadow.camera.far = 30;
-        this.keyLight.shadow.camera.left = -14;
-        this.keyLight.shadow.camera.right = 14;
-        this.keyLight.shadow.camera.top = 10;
-        this.keyLight.shadow.camera.bottom = -12;
-        this.keyLight.shadow.bias = -0.0004;
-        this.keyLight.shadow.normalBias = 0.02;
+        this.keyLight.shadow.camera.left = -10;
+        this.keyLight.shadow.camera.right = 10;
+        this.keyLight.shadow.camera.top = 8;
+        this.keyLight.shadow.camera.bottom = -11;
+        this.keyLight.shadow.bias = -0.00015;
+        this.keyLight.shadow.normalBias = 0.012;
+        this.keyLight.shadow.radius = 2;
+        this.keyLight.target.position.set(0, 0, -4);
+        this.scene.add(this.keyLight.target);
+        this._normalColor = new THREE.Color(0xf8fafc);
+        this._alertColor = new THREE.Color(0xf43f5e);
         this.scene.add(this.keyLight);
         this.lights.push(this.keyLight);
 
@@ -94,8 +99,8 @@ export class LightingSystem {
 
     stopWarning() {
         this._warningActive = false;
-        this.ambient.intensity = 1.0;
-        this.ambient.color.set(0xffffff);
+        this.ambient.intensity = .52;
+        this.ambient.color.set(0xf8fafc);
     }
 
     /**
@@ -107,15 +112,16 @@ export class LightingSystem {
             // Flash between normal and red tint
             const flash = Math.sin(this._warningTime * 14) * 0.5 + 0.5;
             this.ambient.color.lerpColors(
-                new THREE.Color(0xffffff),
-                new THREE.Color(0xff3333),
-                flash * 0.45
+                this._normalColor,
+                this._alertColor,
+                flash * 0.28
             );
-            this.ambient.intensity = 1.0 + flash * 0.25;
+            this.ambient.intensity = .52 + flash * .12;
         }
     }
 
     dispose() {
+        this.scene.remove(this.keyLight.target);
         for (const l of this.lights) {
             this.scene.remove(l);
             if (l.dispose) l.dispose();

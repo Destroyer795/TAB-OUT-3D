@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { createEmployee } from './HumanoidRig.js';
+import { disposeTree } from '../utils/DisposeUtils.js';
 
 // World scale: scene deskTopY = 0.85m / real 0.74m
 const S = 0.85 / 0.74;
@@ -16,12 +17,86 @@ export class OfficeScene {
         this.scene = scene;
         this.group = new THREE.Group();
         this.employees = [];
+        this.time = 0;
+        this.suspicion = 0;
         this._build();
+        this._finishScene();
         this.scene.add(this.group);
     }
 
     setBoss(boss) {
         this.boss = boss;
+    }
+
+    _finishScene() {
+        this.group.updateMatrixWorld(true);
+        const position = new THREE.Vector3();
+        const rigRoots = new Set(this.employees.map(emp => emp.group));
+        this.group.traverse(mesh => {
+            if (!mesh.isMesh || mesh.material?.isMeshBasicMaterial) return;
+            for (let parent = mesh.parent; parent; parent = parent.parent) if (rigRoots.has(parent)) return;
+            mesh.getWorldPosition(position);
+            mesh.receiveShadow = true;
+            // Exterior towers and the ceiling must not shadow the entire office.
+            mesh.castShadow = Math.abs(position.x) < 12 && position.y > .03 && position.y < 3;
+        });
+        // Contact gradients stay soft even beyond the directional shadow frustum.
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+        gradient.addColorStop(0, 'rgba(15,23,42,.28)');
+        gradient.addColorStop(1, 'rgba(15,23,42,0)');
+        ctx.fillStyle = gradient; ctx.fillRect(0, 0, 64, 64);
+        const material = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 });
+        const geometry = new THREE.PlaneGeometry(1, 1);
+        const add = (x, z, sx, sz) => {
+            const shadow = new THREE.Mesh(geometry, material);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.set(x, .015, z);
+            shadow.scale.set(sx, sz, 1);
+            this.group.add(shadow);
+        };
+        add(0, -.65, 3.8, 2.5);
+        add(0, .7, 1.3, 1.3);
+        this.employees.forEach(emp => {
+            add(emp.homeX, emp.homeZ, 1.1, 1.1);
+            if (emp.type === 'sitting_desk') add(emp.homeX, emp.homeZ - .4, 2.8, 1.7);
+        });
+        this._batchStaticMeshes();
+    }
+
+    _batchStaticMeshes() {
+        // Collapse repeated furniture/architecture into instanced draws. Rig and
+        // interactive prop hierarchies remain independently animated.
+        const excluded = new Set([...this.employees.map(emp => emp.group), this.coffeeMug, this.deskLamp]);
+        const batches = new Map();
+        const collect = node => {
+            if (excluded.has(node)) return;
+            if (node.isMesh && !Array.isArray(node.material) && node.geometry.parameters && !node.material.transparent) {
+                const key = node.geometry.type + JSON.stringify(node.geometry.parameters) + node.material.uuid + node.castShadow + node.receiveShadow;
+                if (!batches.has(key)) batches.set(key, []);
+                batches.get(key).push(node);
+            }
+            node.children.forEach(collect);
+        };
+        collect(this.group);
+        batches.forEach(meshes => {
+            if (meshes.length < 3) return;
+            const first = meshes[0];
+            const instance = new THREE.InstancedMesh(first.geometry, first.material, meshes.length);
+            instance.castShadow = first.castShadow;
+            instance.receiveShadow = first.receiveShadow;
+            const discarded = new Set();
+            meshes.forEach((mesh, i) => {
+                instance.setMatrixAt(i, mesh.matrixWorld);
+                if (mesh.geometry !== first.geometry) discarded.add(mesh.geometry);
+                mesh.removeFromParent();
+            });
+            discarded.forEach(geometry => geometry.dispose());
+            instance.computeBoundingSphere();
+            this.group.add(instance);
+        });
     }
 
     _build() {
@@ -814,6 +889,7 @@ export class OfficeScene {
         // Link conversation eye-contact between the stool coworkers
         const stoolEmps = this.employees.filter(e => e.type === "sitting_stool");
         if (stoolEmps.length >= 2) {
+            stoolEmps.forEach(emp => { emp.peers = stoolEmps.filter(other => other !== emp); });
             stoolEmps[0].human.lookAt(stoolEmps[1].group.position);
             for (let i = 1; i < stoolEmps.length; i++) {
                 stoolEmps[i].human.lookAt(stoolEmps[0].group.position);
@@ -846,30 +922,37 @@ export class OfficeScene {
     }
 
     _createMug(x, y, z) {
+        this.coffeeMug = new THREE.Group();
+        this.coffeeMug.position.set(x, y, z);
         const mat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.4 });
         const body = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.04, 0.035, 0.1, 12),
+            new THREE.CylinderGeometry(0.055, 0.045, 0.13, 32, 1, true),
             mat
         );
-        body.position.set(x, y + 0.05, z);
-        this.group.add(body);
+        body.position.set(0, .065, 0);
+        this.coffeeMug.add(body);
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(.052, .004, 12, 32), mat);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.y = .13;
+        this.coffeeMug.add(rim);
 
         // Handle
         const handle = new THREE.Mesh(
-            new THREE.TorusGeometry(0.025, 0.006, 6, 8, Math.PI),
+            new THREE.TorusGeometry(0.034, 0.008, 12, 32, Math.PI),
             mat
         );
         handle.rotation.y = Math.PI / 2;
-        handle.position.set(x + 0.04, y + 0.05, z);
-        this.group.add(handle);
+        handle.position.set(.05, .065, 0);
+        this.coffeeMug.add(handle);
 
         // Coffee inside
         const coffee = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.035, 0.035, 0.01, 12),
+            new THREE.CylinderGeometry(0.048, 0.048, 0.006, 32),
             new THREE.MeshStandardMaterial({ color: 0x3c1e0a, roughness: 0.3 })
         );
-        coffee.position.set(x, y + 0.095, z);
-        this.group.add(coffee);
+        coffee.position.set(0, .12, 0);
+        this.coffeeMug.add(coffee);
+        this.group.add(this.coffeeMug);
     }
 
     _createLamp(x, y, z) {
@@ -898,6 +981,12 @@ export class OfficeScene {
         });
 
         const lampGroup = new THREE.Group();
+        this.deskLamp = lampGroup;
+        this.lampBulb = bulbMat;
+        bulbMat.emissive = new THREE.Color(0xffc078);
+        this.lampLight = new THREE.PointLight(0xffc078, 1.4, 2.8, 2);
+        this.lampLight.position.set(-.2, .4, 0);
+        lampGroup.add(this.lampLight);
         lampGroup.position.set(x, y, z);
 
         // 1. Double-tiered beveled base
@@ -1444,15 +1533,21 @@ export class OfficeScene {
         const empIndex = this.employees.length;
         const isDesk = (config.type === "sitting_desk");
 
-        const height = (1.75 + 0.04 * (empIndex % 5)) * S;
-        const seatHeight = isDesk ? 0.52 : 0.68;
+        const heights = [1.80, 1.68, 1.85, 1.66, 1.76, 1.70, 1.79, 1.72];
+        const height = heights[empIndex % heights.length] * S;
+        const scale = height / 1.78;
+        const seatHeight = (isDesk ? .56 : .76) / scale;
         // palm centre of keyboard, METRES, relative to root (floor under chair facing +Z)
-        const keyboard = [0, 0.74, 0.35];
+        const keyboard = [0, .865 / scale, .30 / scale];
 
         const human = createEmployee(empIndex, {
             height,
             seatHeight,
             keyboard,
+            restHands: [0, (isDesk ? .70 : .86) / scale, .19 / scale],
+            tableHands: [0, .99 / scale, .25 / scale],
+            footHeight: isDesk ? 0 : .20 / scale,
+            seatedFootZ: (isDesk ? .33 : .12) / scale,
         });
 
         // Floor point = 0, facing = rotationY
@@ -1464,10 +1559,10 @@ export class OfficeScene {
         const monitorTarget = isDesk ? new THREE.Vector3(x, 1.05, z - 0.65) : null;
 
         if (isDesk) {
-            human.setPose('sitType');
+            human.setPose('sitType', { snap: true });
             human.lookAt(monitorTarget);
         } else {
-            human.setPose('sitTalk');
+            human.setPose('sitTalk', { snap: true });
             human.setTalking(true);
         }
 
@@ -1480,223 +1575,173 @@ export class OfficeScene {
             homeZ: z,
             homeRotationY: rotationY,
             monitorTarget,
-            walkCooldown: 4.0 + Math.random() * 8.0,
-            walkSpeed: 1.4 + Math.random() * 0.4,
+            walkCooldown: 18 + empIndex * 5 + Math.random() * 12,
+            walkSpeed: 1.05 + Math.random() * .18,
             path: [],
             pathIndex: 0,
             standTimer: 0,
             idleTimer: 3.0 + Math.random() * 5.0,
+            stretchTimer: 0,
+            startled: false,
+            gaze: new THREE.Vector3(),
+            velocity: new THREE.Vector2(),
+            transitionTimer: 0,
+            alarmTimer: 0,
+            index: empIndex,
         });
     }
 
     _generateWalkPath(emp, dest) {
         const path = [];
         path.push({ x: emp.homeX, z: emp.homeZ });
+        path.push({ x: emp.homeX + .65, z: emp.homeZ + .08 });
         const aisleZ = -4.5;
-        path.push({ x: emp.homeX, z: aisleZ });
+        path.push({ x: emp.homeX + .65, z: aisleZ });
         path.push({ x: dest.x, z: aisleZ });
         path.push({ x: dest.x, z: dest.z });
         return path;
     }
 
     update(dt) {
-        const isBossPresent = this.boss && this.boss.group && this.boss.group.visible;
-        const smoothT = 1 - Math.exp(-3.5 * dt);
-
-        this.employees.forEach(emp => {
-            // ── AI State Machine (walking / pathfinding for desk employees) ──
-            if (emp.type === "sitting_desk") {
-                if (emp.state === "sitting") {
-                    if (isBossPresent) {
-                        emp.human.setPose('panic');
-                        if (this.boss) emp.human.lookAt(this.boss.group.position);
-                    } else {
-                        if (emp.human.poseName === 'panic') {
-                            emp.human.setPose('sitType');
-                            emp.human.lookAt(emp.monitorTarget);
-                        }
-
-                        // Living office idle: occasional pause to stretch or glance around
-                        emp.idleTimer -= dt;
-                        if (emp.idleTimer <= 0) {
-                            emp.idleTimer = 6.0 + Math.random() * 8.0;
-                            if (Math.random() < 0.35) {
-                                emp.human.setPose('sitIdle');
-                                setTimeout(() => {
-                                    if (emp.state === 'sitting' && emp.human.poseName === 'sitIdle') {
-                                        emp.human.setPose('sitType');
-                                        emp.human.lookAt(emp.monitorTarget);
-                                    }
-                                }, 2500 + Math.random() * 2000);
-                            }
-                        }
-
-                        emp.walkCooldown -= dt;
-                        if (emp.walkCooldown <= 0) {
-                            emp.state = "walking";
-                            const dest = Math.random() < 0.6
-                                ? { x: -3.8, z: -4.2 }
-                                : { x: 3.5, z: -4.8 };
-                            emp.path = this._generateWalkPath(emp, dest);
-                            emp.pathIndex = 1;
-                            emp.human.setPose('stand');
-                            emp.human.lookAt(null);
-                            emp.walkCooldown = 12.0 + Math.random() * 15.0;
-                        }
+        this.time += dt;
+        const alarm = !!this.boss?.group.visible || this.suspicion > 60;
+        for (const emp of this.employees) {
+            const human = emp.human;
+            if (alarm) {
+                emp.alarmTimer += dt;
+                emp.velocity.multiplyScalar(Math.exp(-12 * dt));
+                if (!emp.startled && emp.alarmTimer > .10 + emp.index * .035) {
+                    emp.startled = true;
+                    human.setPose(human.s.sit > .5 ? 'sitAlert' : 'alert');
+                    human.setTalking(false);
+                }
+                if (emp.startled) {
+                    emp.gaze.copy(this.boss.group.position); emp.gaze.y += 1.7;
+                    human.lookAt(emp.gaze);
+                    human.setExpression(emp.alarmTimer < 1 ? 'shock' : 'focus');
+                }
+                human.update(dt);
+                continue;
+            }
+            emp.alarmTimer = 0;
+            if (emp.startled) {
+                emp.startled = false;
+                human.setExpression('neutral');
+                human.setPose(emp.state === 'sitting' || emp.state === 'settling'
+                    ? (emp.type === 'sitting_desk' ? 'sitType' : 'sitTalk') : 'stand');
+                human.lookAt(emp.monitorTarget);
+            }
+            if (emp.type === 'sitting_stool') {
+                const speaker = Math.floor(this.time / 4.8) % 3;
+                const talking = emp.index % 3 === speaker;
+                const peer = emp.peers.find(other => other.index % 3 === speaker) || emp.peers[0];
+                if (peer) {
+                    emp.gaze.copy(peer.group.position); emp.gaze.y += 1.35;
+                    human.lookAt(emp.gaze);
+                }
+                human.setTalking(talking);
+                human.update(dt);
+                continue;
+            }
+            switch (emp.state) {
+                case 'sitting': {
+                    emp.idleTimer -= dt;
+                    emp.walkCooldown -= dt;
+                    if (emp.stretchTimer > 0) {
+                        emp.stretchTimer -= dt;
+                        if (emp.stretchTimer <= 0) human.setPose('sitType');
+                    } else if (emp.idleTimer <= 0) {
+                        emp.idleTimer = 9 + Math.random() * 12;
+                        emp.stretchTimer = 2 + Math.random() * 2;
+                        human.setPose('sitIdle');
                     }
-                } else if (emp.state === "walking" || emp.state === "returning") {
+                    emp.gaze.copy(emp.monitorTarget);
+                    emp.gaze.x += Math.sin(this.time * .4 + emp.index) * .06;
+                    human.lookAt(emp.gaze);
+                    const aisleOccupied = this.employees.some(other => other !== emp && other.type === 'sitting_desk' && other.state !== 'sitting');
+                    if (emp.walkCooldown <= 0 && !aisleOccupied) {
+                        emp.state = 'rising'; emp.transitionTimer = 1;
+                        const destination = emp.index % 2 ? { x: 2.75, z: -4.1 } : { x: -3.8, z: -4.25 };
+                        emp.path = this._generateWalkPath(emp, destination); emp.pathIndex = 1;
+                        human.setPose('stand'); human.lookAt(null);
+                        emp.walkCooldown = 26 + Math.random() * 25;
+                    }
+                    break;
+                }
+                case 'rising':
+                    emp.transitionTimer -= dt;
+                    if (emp.transitionTimer <= 0) emp.state = 'walking';
+                    break;
+                case 'walking':
+                case 'returning': {
                     const target = emp.path[emp.pathIndex];
-                    const dx = target.x - emp.group.position.x;
-                    const dz = target.z - emp.group.position.z;
-                    const dist = Math.sqrt(dx * dx + dz * dz);
-
-                    // 1. Calculate Local Obstacle Avoidance Steering Forces
-                    let avoidX = 0;
-                    let avoidZ = 0;
-                    const avoidRadius = 1.4;
-
-                    // Avoid Boss
-                    if (this.boss && this.boss.group.visible) {
-                        const bx = this.boss.group.position.x;
-                        const bz = this.boss.group.position.z;
-                        const d = Math.hypot(emp.group.position.x - bx, emp.group.position.z - bz);
-                        if (d < avoidRadius && d > 0.01) {
-                            const pushX = (emp.group.position.x - bx) / d;
-                            const pushZ = (emp.group.position.z - bz) / d;
-                            const weight = (avoidRadius - d) / avoidRadius;
-                            avoidX += pushX * weight * 1.6;
-                            avoidZ += pushZ * weight * 1.6;
-                        }
-                    }
-
-                    // Avoid other employees
-                    for (const other of this.employees) {
-                        if (other === emp) continue;
-                        if (other.state !== "sitting" || other.type === "sitting_stool") {
-                            const ox = other.group.position.x;
-                            const oz = other.group.position.z;
-                            const d = Math.hypot(emp.group.position.x - ox, emp.group.position.z - oz);
-                            if (d < avoidRadius && d > 0.01) {
-                                const pushX = (emp.group.position.x - ox) / d;
-                                const pushZ = (emp.group.position.z - oz) / d;
-                                const weight = (avoidRadius - d) / avoidRadius;
-                                avoidX += pushX * weight * 1.0;
-                                avoidZ += pushZ * weight * 1.0;
-                                avoidX += -pushZ * weight * 0.4;
-                                avoidZ += pushX * weight * 0.4;
-                            }
-                        }
-                    }
-
-                    // 2. Hard collision blocking
-                    let blocked = false;
-                    const collisionDist = 1.0;
-
-                    if (this.boss && this.boss.group.visible) {
-                        const bx = this.boss.group.position.x;
-                        const bz = this.boss.group.position.z;
-                        if (Math.hypot(emp.group.position.x - bx, emp.group.position.z - bz) < collisionDist) {
-                            const dxBoss = bx - emp.group.position.x;
-                            const dzBoss = bz - emp.group.position.z;
-                            if ((dx / dist) * dxBoss + (dz / dist) * dzBoss > 0) blocked = true;
-                        }
-                    }
-
-                    if (!blocked) {
-                        for (const other of this.employees) {
-                            if (other === emp) continue;
-                            if (other.state === "walking" || other.state === "returning" || other.state === "standing") {
-                                const ox = other.group.position.x;
-                                const oz = other.group.position.z;
-                                if (Math.hypot(emp.group.position.x - ox, emp.group.position.z - oz) < collisionDist) {
-                                    const dxOther = ox - emp.group.position.x;
-                                    const dzOther = oz - emp.group.position.z;
-                                    if ((dx / dist) * dxOther + (dz / dist) * dzOther > 0.2) {
-                                        blocked = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (dist < 0.20) {
-                        emp.pathIndex++;
+                    if (!target) break;
+                    const dx = target.x - emp.group.position.x, dz = target.z - emp.group.position.z;
+                    const distance = Math.hypot(dx, dz);
+                    if (distance < .055) {
+                        emp.velocity.set(0, 0); emp.pathIndex++;
                         if (emp.pathIndex >= emp.path.length) {
-                            if (emp.state === "walking") {
-                                emp.state = "standing";
-                                emp.standTimer = 3.5 + Math.random() * 3.5;
-                                emp.human.setPose('standTalk');
-                                emp.human.setTalking(true);
+                            if (emp.state === 'walking') {
+                                emp.state = 'standing'; emp.standTimer = 3 + Math.random() * 3;
+                                human.setPose('stand'); human.setTalking(false);
                             } else {
-                                emp.state = "sitting";
-                                emp.group.position.set(emp.homeX, 0, emp.homeZ);
-                                emp.group.rotation.set(0, emp.homeRotationY, 0);
-                                if (isBossPresent) {
-                                    emp.human.setPose('panic');
-                                    if (this.boss) emp.human.lookAt(this.boss.group.position);
-                                } else {
-                                    emp.human.setPose('sitType');
-                                    emp.human.lookAt(emp.monitorTarget);
-                                }
+                                emp.state = 'aligning'; emp.transitionTimer = .85;
                             }
                         }
-                    } else if (!blocked) {
-                        const moveDist = emp.walkSpeed * dt;
-                        const step = Math.min(moveDist, dist);
-
-                        let vx = (dx / dist) * step;
-                        let vz = (dz / dist) * step;
-
-                        vx += avoidX * dt * 2.0;
-                        vz += avoidZ * dt * 2.0;
-
-                        const finalSpeed = Math.hypot(vx, vz);
-                        if (finalSpeed > moveDist) {
-                            vx = (vx / finalSpeed) * moveDist;
-                            vz = (vz / finalSpeed) * moveDist;
-                        }
-
-                        // Move root position (HumanoidRig auto-detects movement and animates legs/feet/arms!)
-                        emp.group.position.x += vx;
-                        emp.group.position.z += vz;
-
-                        // Rotate to face movement direction
-                        const targetRotY = Math.atan2(vx, vz);
-                        let angleDiff = targetRotY - emp.group.rotation.y;
-                        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-                        emp.group.rotation.y += angleDiff * smoothT * 2;
+                        break;
                     }
-                } else if (emp.state === "standing") {
+                    const heading = Math.atan2(dx, dz);
+                    const error = Math.atan2(Math.sin(heading - emp.group.rotation.y), Math.cos(heading - emp.group.rotation.y));
+                    emp.group.rotation.y += error * (1 - Math.exp(-6 * dt));
+                    const arrival = Math.min(1, distance / .30);
+                    const speed = emp.walkSpeed * arrival * Math.max(.08, Math.cos(error));
+                    const blend = 1 - Math.exp(-7 * dt);
+                    emp.velocity.x += (dx / distance * speed - emp.velocity.x) * blend;
+                    emp.velocity.y += (dz / distance * speed - emp.velocity.y) * blend;
+                    const step = Math.min(distance, emp.velocity.length() * dt);
+                    if (step > 0) {
+                        const length = emp.velocity.length();
+                        emp.group.position.x += emp.velocity.x / length * step;
+                        emp.group.position.z += emp.velocity.y / length * step;
+                    }
+                    break;
+                }
+                case 'standing':
                     emp.standTimer -= dt;
                     if (emp.standTimer <= 0) {
-                        emp.state = "returning";
-                        emp.path = [...emp.path].reverse();
-                        emp.pathIndex = 1;
-                        emp.human.setPose('stand');
-                        emp.human.setTalking(false);
+                        emp.state = 'returning'; emp.path = [...emp.path].reverse(); emp.pathIndex = 1;
+                        human.setPose('stand'); human.lookAt(null);
                     }
+                    break;
+                case 'aligning': {
+                    const error = Math.atan2(Math.sin(emp.homeRotationY - emp.group.rotation.y), Math.cos(emp.homeRotationY - emp.group.rotation.y));
+                    emp.group.rotation.y += error * (1 - Math.exp(-7 * dt));
+                    emp.transitionTimer -= dt;
+                    if (emp.transitionTimer <= 0) {
+                        emp.state = 'settling'; emp.transitionTimer = .9;
+                        human.setPose('sitIdle'); human.lookAt(emp.monitorTarget);
+                    }
+                    break;
                 }
-            } else if (emp.type === "sitting_stool") {
-                if (isBossPresent) {
-                    emp.human.setPose('panic');
-                    if (this.boss) emp.human.lookAt(this.boss.group.position);
-                } else if (emp.human.poseName === 'panic') {
-                    emp.human.setPose('sitTalk');
-                    emp.human.setTalking(true);
-                }
+                case 'settling':
+                    emp.transitionTimer -= dt;
+                    if (emp.transitionTimer <= 0) {
+                        emp.state = 'sitting'; emp.stretchTimer = 0;
+                        human.setPose('sitType');
+                    }
+                    break;
             }
-
-            // Advance procedural animation (breathe, blink, IK, typing, saccades)
-            emp.human.update(dt);
-        });
+            human.update(dt);
+        }
     }
 
     dispose() {
         this.scene.remove(this.group);
         this.employees.forEach(emp => {
+            emp.group.removeFromParent();
             if (emp.human) emp.human.dispose();
         });
+        disposeTree(this.group);
         this.employees = [];
     }
 }
