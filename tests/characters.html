@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAB-OUT 3D · Character Lab</title><link rel="icon" href="data:,">
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<style>
+body { margin:0;background:#111827;color:#dbe5ed;font:12px/1.6 system-ui;overflow:hidden }
+canvas { display:block } nav {position:fixed;left:20px;top:20px;display:flex;gap:8px;align-items:center;z-index:2}
+button {color:#dbe5ed;background:#1e293b;border:1px solid #64748b;border-radius:6px;padding:9px 12px;cursor:pointer}
+#qa-results {position:fixed;right:20px;top:60px;background:#0f172ae8;padding:14px;max-width:460px;white-space:pre-wrap;pointer-events:none}
+footer {position:fixed;bottom:20px;left:20px;color:#a5b4c5;letter-spacing:1px}
+</style></head><body>
+<nav><strong>CHARACTER LAB</strong><button id="run-qa">RUN CHARACTER QA</button><button data-pose="stand">Standing</button><button data-pose="walk">Walking</button><button data-pose="sitType">Typing</button><button data-pose="sitTalk">Meeting</button><button data-pose="sitAlert">Reaction</button><button id="face-view">Face detail</button></nav>
+<pre id="qa-results">Loading character rigs…</pre><footer>PROCEDURAL HUMAN RIG · ANATOMY / IK / MOTION REVIEW</footer>
+<script type="module" src="characters.js"></script></body></html>

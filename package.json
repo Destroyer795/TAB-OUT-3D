@@ -1,0 +1,13 @@
+{
+  "name": "tab-out-3d",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/systems.test.mjs",
+    "test:browser": "node scripts/browser-check.mjs",
+    "test:characters": "node scripts/browser-check.mjs --characters"
+  }
+}
